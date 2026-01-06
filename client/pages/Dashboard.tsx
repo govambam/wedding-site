@@ -785,6 +785,18 @@ export default function Dashboard() {
                 </label>
               </div>
 
+              {travelFormState[guest.id]?.needs_transfer && (
+                <div className="dashboard-transfer-inline">
+                  <div className="dashboard-transfer-empty-state">
+                    <p>
+                      Transfer details will be shared with you once confirmed.
+                      We'll coordinate timing and meet-up information closer to
+                      the wedding date.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="dashboard-form-group">
                 <label className="dashboard-label">Additional Notes</label>
                 <textarea
