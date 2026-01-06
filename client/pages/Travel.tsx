@@ -1,55 +1,162 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/utils/supabase";
+
 export default function Travel() {
-  return (
-    <div className="page-content-wrapper">
-      <div className="page-content">
-        <h1 className="page-title">Travel Information</h1>
-        <p className="page-placeholder">
-          This page will contain flight recommendations, visa requirements, and travel tips for Guatemala.
-        </p>
-        <p className="page-prompt">
-          Continue prompting to fill in this page content.
-        </p>
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const { data: session, error: sessionError } =
+        await supabase.auth.getSession();
+
+      if (sessionError || !session.session) {
+        navigate("/login");
+        return;
+      }
+
+      setLoading(false);
+    } catch (err) {
+      console.error("Auth check error:", err);
+      navigate("/login");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="travel-wrapper">
+        <div className="travel-loading">
+          <div className="travel-spinner"></div>
+        </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="travel-wrapper">
+      <div className="travel-container">
+        <h1 className="travel-title">Travel to Guatemala</h1>
+
+        <div className="travel-section">
+          <h2 className="travel-section-heading">Arrival & Transfer</h2>
+
+          <p className="travel-paragraph">
+            The easiest way to reach Antigua is to fly into La Aurora
+            International Airport (GUA) in Guatemala City. From there, it's
+            about a 2-hour scenic drive to Antigua.
+          </p>
+
+          <p className="travel-paragraph">
+            Our wedding planner can arrange a reliable private transfer service
+            for you. A driver will meet you at arrivals (holding a sign with
+            your name) and take you directly to your hotel. We'll coordinate
+            this once you share your flight details during RSVP.
+          </p>
+
+          <p className="travel-paragraph">
+            To make things simpler and more fun, we'll ask attending guests to
+            share their arrival information with us. That way, we can help
+            connect travelers landing around the same time to share transfers if
+            desired.
+          </p>
+        </div>
+      </div>
+
       <style>{`
-        .page-content-wrapper {
-          padding: 4rem 2rem;
+        .travel-wrapper {
+          padding: 2rem 1rem;
+          min-height: 100vh;
+          background-color: #ffffff;
         }
 
-        .page-content {
+        .travel-loading {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 80vh;
+        }
+
+        .travel-spinner {
+          width: 40px;
+          height: 40px;
+          border: 2px solid #e5e5e5;
+          border-top: 2px solid #000000;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        .travel-container {
           max-width: 800px;
           margin: 0 auto;
         }
 
-        .page-title {
+        .travel-title {
           font-size: 3rem;
           font-weight: 400;
-          margin: 0 0 2rem 0;
+          margin: 3rem 0 0 0;
           letter-spacing: 0.02em;
           font-family: "orpheuspro", serif;
+          text-align: center;
+          color: #000000;
         }
 
-        .page-placeholder {
-          font-size: 1rem;
-          line-height: 1.8;
-          color: #666666;
-          margin: 0 0 1rem 0;
+        .travel-section {
+          margin-top: 3rem;
+        }
+
+        .travel-section-heading {
+          font-size: 1.5rem;
+          font-weight: 400;
+          margin: 2.5rem 0 2rem 0;
+          letter-spacing: 0.01em;
           font-family: "orpheuspro", serif;
+          text-align: center;
+          color: #000000;
         }
 
-        .page-prompt {
-          font-size: 0.95rem;
-          color: #999999;
-          font-style: italic;
+        .travel-paragraph {
+          font-size: 1rem;
+          line-height: 1.7;
+          color: #333333;
+          margin: 1.25rem auto;
+          max-width: 600px;
+          text-align: center;
           font-family: "orpheuspro", serif;
         }
 
         @media (max-width: 768px) {
-          .page-title {
-            font-size: 2rem;
+          .travel-wrapper {
+            padding: 1rem 0.75rem;
           }
 
-          .page-content-wrapper {
-            padding: 2rem 1.5rem;
+          .travel-title {
+            font-size: 2rem;
+            margin: 2rem 0 0 0;
+          }
+
+          .travel-section {
+            margin-top: 2rem;
+          }
+
+          .travel-section-heading {
+            font-size: 1.25rem;
+            margin: 2rem 0 1.5rem 0;
+          }
+
+          .travel-paragraph {
+            font-size: 0.95rem;
+            margin: 1rem auto;
           }
         }
       `}</style>
