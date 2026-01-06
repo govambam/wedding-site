@@ -797,7 +797,7 @@ export default function Dashboard() {
                 </div>
               )}
 
-              <div className="dashboard-form-group">
+              <div className="dashboard-form-group dashboard-form-group-spaced">
                 <label className="dashboard-label">Additional Notes</label>
                 <textarea
                   className="dashboard-textarea"
