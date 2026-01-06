@@ -163,6 +163,7 @@ export default function Dashboard() {
           rsvpMap[r.guest_id] = r as RsvpResponse;
         });
         setRsvpResponses(rsvpMap);
+        setRsvpFormState(rsvpMap);
       }
 
       // Fetch travel details
