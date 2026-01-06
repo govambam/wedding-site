@@ -252,13 +252,16 @@ export default function RSVP() {
           let restrictions = [...(g.dietary_restrictions || [])];
 
           if (option === "None") {
-            restrictions = checked ? ["None"] : [];
+            // When "None" is selected, clear all restrictions
+            restrictions = checked ? [] : restrictions;
           } else if (checked) {
+            // When any other option is selected, clear "None" if present
             restrictions = restrictions.filter((r) => r !== "None");
             if (!restrictions.includes(option)) {
               restrictions.push(option);
             }
           } else {
+            // When unchecking, just remove that option
             restrictions = restrictions.filter((r) => r !== option);
           }
 
