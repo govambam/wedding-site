@@ -78,6 +78,9 @@ export default function Dashboard() {
   const [travelFormState, setTravelFormState] = useState<
     Record<string, TravelDetails>
   >({});
+  const [showRsvpForm, setShowRsvpForm] = useState(false);
+  const [savingRsvp, setSavingRsvp] = useState(false);
+  const [rsvpFormState, setRsvpFormState] = useState<Record<string, any>>({});
 
   useEffect(() => {
     loadData();
