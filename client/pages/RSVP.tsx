@@ -380,9 +380,9 @@ export default function RSVP() {
 
   const cleanDietaryRestrictions = (restrictions: string[]): string[] => {
     if (!restrictions || restrictions.length === 0) return [];
-    // Remove "None" and convert to lowercase matching database enum
+    // Remove the "None" marker and convert to lowercase matching database enum
     return restrictions
-      .filter((r) => r !== "None")
+      .filter((r) => r !== "None" && r !== "__none__")
       .map((r) => r.toLowerCase().replace(/\s+/g, "_"));
   };
 
