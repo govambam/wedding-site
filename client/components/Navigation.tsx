@@ -126,6 +126,9 @@ export default function Navigation() {
 
       if (guestError) {
         console.error("Guest fetch error:", guestError);
+        if (guestError.message.includes("infinite recursion")) {
+          console.warn("RLS policy infinite recursion detected. This is a Supabase configuration issue.");
+        }
         setUserData(null);
         setLoading(false);
         return;
@@ -150,6 +153,9 @@ export default function Navigation() {
 
       if (inviteError) {
         console.error("Invite fetch error:", inviteError);
+        if (inviteError.message.includes("infinite recursion")) {
+          console.warn("RLS policy infinite recursion on invites table. Check Supabase policies for circular dependencies with admin_users.");
+        }
         setUserData(null);
         setLoading(false);
         return;
@@ -197,6 +203,10 @@ export default function Navigation() {
       setUserData(userData);
     } catch (error: any) {
       console.error("Unexpected error fetching user data:", error);
+      if (error.message?.includes("infinite recursion")) {
+        console.warn("⚠️ RLS Policy Issue: Fix the infinite recursion in your Supabase RLS policies");
+        console.warn("Check that the 'invites' table policy does not reference 'admin_users'");
+      }
       setUserData(null);
     } finally {
       setLoading(false);
