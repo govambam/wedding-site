@@ -230,10 +230,25 @@ export default function Navigation() {
 
   const handleLogout = async () => {
     console.log("Logging out...");
-    await supabase.auth.signOut();
+    try {
+      // Try to sign out, but don't wait too long
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Signout timeout")), 3000)
+      );
+
+      await Promise.race([
+        supabase.auth.signOut(),
+        timeoutPromise
+      ]);
+    } catch (error) {
+      console.error("Error during signout:", error);
+      // Continue logout even if signOut fails
+    }
+
+    // Always clear local state and redirect
     setIsLoggedIn(false);
     setUserData(null);
-    navigate("/");
+    navigate("/", { replace: true });
   };
 
   const handleRsvpClick = () => {
