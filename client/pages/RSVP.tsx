@@ -376,48 +376,92 @@ export default function RSVP() {
     }
   };
 
+  const cleanDietaryRestrictions = (restrictions: string[]): string[] => {
+    if (!restrictions || restrictions.length === 0) return [];
+    // Remove "None" and convert to lowercase matching database enum
+    return restrictions
+      .filter((r) => r !== "None")
+      .map((r) => r.toLowerCase().replace(/\s+/g, "_"));
+  };
+
   const handleSubmitRSVP = async () => {
     if (!invite) return;
 
     setSubmitting(true);
     try {
+      console.log("=== Starting RSVP submission ===");
       const attendingGuests = getAttendingGuests();
+      console.log(`Total guests in invite: ${guests.length}`);
+      console.log(`Attending guests: ${attendingGuests.length}`);
+      console.log("Attending guest IDs:", attendingGuests.map((g) => g.id));
 
-      // Calculate RSVP status
-      let rsvpStatus = "confirmed";
-      if (attendingGuests.length === 0) {
-        rsvpStatus = "declined";
-      } else if (attendingGuests.length < guests.length) {
-        rsvpStatus = "partial";
-      }
-
-      // Upsert RSVP responses
+      // STEP 1: Insert/Update rsvp_responses for EACH guest
+      console.log("\n=== STEP 1: Saving RSVP responses for all guests ===");
       for (const guest of guests) {
-        if (selectedAttendees.has(guest.id)) {
-          await supabase.from("rsvp_responses").upsert({
-            guest_id: guest.id,
-            attending: true,
-            dietary_restrictions: guest.dietary_restrictions || [],
-            dietary_notes: guest.dietary_notes || null,
-            accommodation_needed: guest.accommodation_needed || false,
-            accommodation_payment_level:
-              guest.accommodation_payment_level || "full",
-            atitlan_attending: guest.atitlan_attending || false,
-            atitlan_payment_level: guest.atitlan_payment_level || "full",
+        const isAttending = selectedAttendees.has(guest.id);
+        const cleanedDietary = cleanDietaryRestrictions(
+          guest.dietary_restrictions || []
+        );
+
+        const rsvpData = {
+          guest_id: guest.id,
+          attending: isAttending,
+          dietary_restrictions: cleanedDietary,
+          dietary_notes: isAttending ? guest.dietary_notes || null : null,
+          accommodation_needed: isAttending
+            ? accommodationNeeded || false
+            : false,
+          accommodation_payment_level: isAttending && accommodationNeeded
+            ? accommodationPayment || "full"
+            : null,
+          atitlan_attending: isAttending ? guest.atitlan_attending || false : false,
+          atitlan_payment_level: isAttending && guest.atitlan_attending
+            ? guest.atitlan_payment_level || "full"
+            : null,
+        };
+
+        console.log(
+          `Saving RSVP for ${guest.first_name} ${guest.last_name} (ID: ${guest.id}):`,
+          rsvpData
+        );
+
+        const { data: savedRsvp, error: rsvpError } = await supabase
+          .from("rsvp_responses")
+          .upsert(rsvpData, {
+            onConflict: "guest_id",
           });
-        } else {
-          await supabase.from("rsvp_responses").upsert({
-            guest_id: guest.id,
-            attending: false,
-            dietary_restrictions: [],
-            accommodation_needed: false,
-            atitlan_attending: false,
-          });
+
+        if (rsvpError) {
+          console.error(
+            `❌ Error saving RSVP for ${guest.first_name}:`,
+            rsvpError
+          );
+          throw new Error(
+            `Failed to save RSVP for ${guest.first_name}: ${rsvpError.message}`
+          );
         }
+
+        console.log(
+          `✓ Successfully saved RSVP for ${guest.first_name} ${guest.last_name}`
+        );
       }
 
-      // Update invite
-      await supabase
+      // STEP 2: Calculate and update invite rsvp_status
+      console.log("\n=== STEP 2: Updating invite status ===");
+      const allAttending = attendingGuests.length === guests.length;
+      const noneAttending = attendingGuests.length === 0;
+      const rsvpStatus = noneAttending
+        ? "declined"
+        : allAttending
+          ? "confirmed"
+          : "partial";
+
+      console.log(`Invite status: ${rsvpStatus}`);
+      console.log(
+        `All attending: ${allAttending}, None attending: ${noneAttending}`
+      );
+
+      const { error: inviteError } = await supabase
         .from("invites")
         .update({
           rsvp_status: rsvpStatus,
@@ -425,57 +469,100 @@ export default function RSVP() {
         })
         .eq("id", invite.id);
 
-      // Insert accommodation payment if applicable
-      if (
-        accommodationNeeded &&
-        accommodationGroup &&
-        accommodationPayment !== null
-      ) {
+      if (inviteError) {
+        console.error("❌ Error updating invite:", inviteError);
+        throw new Error(`Failed to update invite: ${inviteError.message}`);
+      }
+
+      console.log(`✓ Successfully updated invite status to: ${rsvpStatus}`);
+
+      // STEP 3: Save accommodation payment if applicable
+      if (attendingGuests.length > 0 && accommodationNeeded && accommodationPayment) {
+        console.log("\n=== STEP 3: Saving accommodation payment ===");
+
         const total =
-          accommodationGroup.per_night_cost *
-          accommodationGroup.number_of_nights;
+          accommodationGroup!.per_night_cost *
+          accommodationGroup!.number_of_nights;
         const multiplier =
           accommodationPayment === "none"
             ? 0
             : accommodationPayment === "half"
               ? 0.5
               : 1;
+        const accommodationCost = total * multiplier;
 
-        await supabase.from("payments").insert({
-          invite_id: invite.id,
-          payment_type: "accommodation",
-          amount_committed: total * multiplier,
-        });
-      }
+        console.log(`Accommodation cost: $${accommodationCost}`);
+        console.log(`Payment level: ${accommodationPayment}`);
 
-      // Insert atitlan payment if applicable
-      if (atitlanAttending && atitlanGuests.size > 0) {
-        let totalAtitlan = 0;
-        const atitlanCostPerPerson = 100;
-        for (const guestId of atitlanGuests) {
-          const multiplier =
-            atitlanPayments[guestId] === "none"
-              ? 0
-              : atitlanPayments[guestId] === "half"
-                ? 0.5
-                : 1;
-          totalAtitlan += atitlanCostPerPerson * multiplier;
+        const { error: paymentError } = await supabase
+          .from("payments")
+          .insert({
+            invite_id: invite.id,
+            payment_type: "accommodation",
+            amount_committed: accommodationCost,
+          });
+
+        if (paymentError) {
+          console.error("❌ Error saving accommodation payment:", paymentError);
+          throw new Error(
+            `Failed to save accommodation payment: ${paymentError.message}`
+          );
         }
 
-        if (totalAtitlan > 0) {
-          await supabase.from("payments").insert({
+        console.log("✓ Successfully saved accommodation payment");
+      }
+
+      // STEP 4: Save Atitlan payment if applicable
+      if (atitlanAttending && atitlanGuests.size > 0) {
+        console.log("\n=== STEP 4: Saving Atitlan payment ===");
+
+        let totalAtitlan = 0;
+        const atitlanCostPerPerson = 100;
+
+        for (const guestId of atitlanGuests) {
+          const paymentLevel = atitlanPayments[guestId];
+          const multiplier =
+            paymentLevel === "none"
+              ? 0
+              : paymentLevel === "half"
+                ? 0.5
+                : 1;
+          const guestCost = atitlanCostPerPerson * multiplier;
+          totalAtitlan += guestCost;
+
+          const guestName = guests.find((g) => g.id === guestId)?.first_name;
+          console.log(
+            `${guestName} - Payment level: ${paymentLevel}, Cost: $${guestCost}`
+          );
+        }
+
+        console.log(`Total Atitlan cost: $${totalAtitlan}`);
+
+        const { error: atitlanPaymentError } = await supabase
+          .from("payments")
+          .insert({
             invite_id: invite.id,
             payment_type: "atitlan",
             amount_committed: totalAtitlan,
           });
+
+        if (atitlanPaymentError) {
+          console.error("❌ Error saving Atitlan payment:", atitlanPaymentError);
+          throw new Error(
+            `Failed to save Atitlan payment: ${atitlanPaymentError.message}`
+          );
         }
+
+        console.log("✓ Successfully saved Atitlan payment");
       }
 
+      console.log("\n=== ✓ RSVP submission complete! ===\n");
       setSuccessMessage("Thank you for your RSVP!");
       setTimeout(() => navigate("/wedding"), 2000);
     } catch (err) {
-      console.error("Error submitting RSVP:", err);
-      setError("Failed to submit RSVP. Please try again.");
+      console.error("❌ RSVP submission failed:", err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(`Failed to submit RSVP: ${errorMessage}`);
     } finally {
       setSubmitting(false);
     }
