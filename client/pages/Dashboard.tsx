@@ -1328,33 +1328,20 @@ export default function Dashboard() {
           border-top: 1px solid #e5e5e5;
         }
 
-        .dashboard-transfer-section {
-          margin-bottom: 1.5rem;
-          padding-bottom: 1.5rem;
-          border-bottom: 1px solid #e5e5e5;
-        }
-
-        .dashboard-transfer-section:last-child {
-          border-bottom: none;
-          margin-bottom: 0;
-          padding-bottom: 0;
-        }
-
-        .dashboard-transfer-heading {
-          font-size: 1rem;
-          font-weight: 500;
-          margin: 0 0 1rem 0;
-          letter-spacing: 0.01em;
-          font-family: "orpheuspro", serif;
-          color: #000000;
+        .dashboard-transfer-inline {
+          margin: 1rem 0;
+          padding: 1rem;
+          background-color: #f9f9f9;
+          border-left: 2px solid #000000;
+          border-radius: 0 4px 4px 0;
         }
 
         .dashboard-transfer-empty-state {
-          padding: 1.5rem;
-          background-color: #f9f9f9;
-          border: 1px solid #e5e5e5;
-          border-radius: 4px;
-          text-align: center;
+          padding: 0;
+          background-color: transparent;
+          border: none;
+          border-radius: 0;
+          text-align: left;
         }
 
         .dashboard-transfer-empty-state p {
