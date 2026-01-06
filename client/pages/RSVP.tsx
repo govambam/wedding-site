@@ -277,9 +277,11 @@ export default function RSVP() {
 
   const isDietaryComplete = () => {
     const attendingGuests = getAttendingGuests();
-    return attendingGuests.every(
-      (g) => g.dietary_restrictions && g.dietary_restrictions.length > 0
-    );
+    return attendingGuests.every((g) => {
+      const restrictions = g.dietary_restrictions || [];
+      // Complete if has restrictions OR has selected "None"
+      return restrictions.length > 0;
+    });
   };
 
   const isGuestSelectionComplete = () => {
