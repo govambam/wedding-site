@@ -1235,6 +1235,161 @@ export default function Dashboard() {
           cursor: not-allowed;
         }
 
+        .dashboard-button-secondary {
+          padding: 0.75rem 2rem;
+          background-color: #f5f5f5;
+          color: #000000;
+          border: 1px solid #e5e5e5;
+          border-radius: 4px;
+          font-size: 0.95rem;
+          font-family: "orpheuspro", serif;
+          cursor: pointer;
+          letter-spacing: 0.02em;
+          transition: all 0.2s ease;
+          margin-left: 1rem;
+        }
+
+        .dashboard-button-secondary:hover:not(:disabled) {
+          background-color: #eeeeee;
+          border-color: #cccccc;
+        }
+
+        .dashboard-button-secondary:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .dashboard-rsvp-form-wrapper {
+          margin-top: 1.5rem;
+          padding: 1.5rem;
+          background-color: #f9f9f9;
+          border: 1px solid #e5e5e5;
+          border-radius: 4px;
+        }
+
+        .dashboard-form-title {
+          font-size: 1.1rem;
+          font-weight: 500;
+          margin: 0 0 1.5rem 0;
+          letter-spacing: 0.01em;
+          font-family: "orpheuspro", serif;
+          color: #000000;
+        }
+
+        .dashboard-rsvp-guest-section {
+          margin-bottom: 1.5rem;
+          padding-bottom: 1.5rem;
+          border-bottom: 1px solid #e5e5e5;
+        }
+
+        .dashboard-rsvp-guest-section:last-child {
+          border-bottom: none;
+          margin-bottom: 0;
+          padding-bottom: 0;
+        }
+
+        .dashboard-rsvp-guest-header {
+          margin-bottom: 1rem;
+        }
+
+        .dashboard-rsvp-guest-details {
+          margin-left: 2rem;
+          padding: 1rem;
+          background-color: #ffffff;
+          border-left: 2px solid #000000;
+        }
+
+        .dashboard-rsvp-subheading {
+          font-size: 0.95rem;
+          font-weight: 500;
+          margin: 0 0 1rem 0;
+          letter-spacing: 0.01em;
+          font-family: "orpheuspro", serif;
+          color: #333333;
+        }
+
+        .dashboard-dietary-checkboxes {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0.75rem;
+          margin-bottom: 0;
+        }
+
+        .dashboard-dietary-checkbox {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.9rem;
+          font-family: "orpheuspro", serif;
+          color: #333333;
+          cursor: pointer;
+        }
+
+        .dashboard-dietary-checkbox input {
+          width: 16px;
+          height: 16px;
+          cursor: pointer;
+          accent-color: #000000;
+        }
+
+        .dashboard-rsvp-form-actions {
+          display: flex;
+          gap: 1rem;
+          margin-top: 1.5rem;
+          padding-top: 1.5rem;
+          border-top: 1px solid #e5e5e5;
+        }
+
+        .dashboard-transfer-section {
+          margin-bottom: 1.5rem;
+          padding-bottom: 1.5rem;
+          border-bottom: 1px solid #e5e5e5;
+        }
+
+        .dashboard-transfer-section:last-child {
+          border-bottom: none;
+          margin-bottom: 0;
+          padding-bottom: 0;
+        }
+
+        .dashboard-transfer-heading {
+          font-size: 1rem;
+          font-weight: 500;
+          margin: 0 0 1rem 0;
+          letter-spacing: 0.01em;
+          font-family: "orpheuspro", serif;
+          color: #000000;
+        }
+
+        .dashboard-transfer-empty-state {
+          padding: 1.5rem;
+          background-color: #f9f9f9;
+          border: 1px solid #e5e5e5;
+          border-radius: 4px;
+          text-align: center;
+        }
+
+        .dashboard-transfer-empty-state p {
+          font-size: 0.95rem;
+          line-height: 1.6;
+          color: #666666;
+          margin: 0;
+          font-family: "orpheuspro", serif;
+        }
+
+        .dashboard-links-placeholder {
+          font-size: 0.95rem;
+          line-height: 1.6;
+          color: #999999;
+          margin: 0;
+          font-family: "orpheuspro", serif;
+          padding: 1.5rem;
+          background-color: #f9f9f9;
+          border: 1px solid #e5e5e5;
+          border-radius: 4px;
+          text-align: center;
+        }
+
         @media (max-width: 768px) {
           .dashboard-wrapper {
             padding: 1rem 0.75rem;
