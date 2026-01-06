@@ -378,6 +378,17 @@ export default function RSVP() {
     }
   };
 
+  const isDietaryOptionSelected = (
+    restrictions: string[] | undefined,
+    option: string
+  ): boolean => {
+    if (!restrictions) return false;
+    if (option === "None") {
+      return restrictions.includes("__none__");
+    }
+    return restrictions.includes(option);
+  };
+
   const cleanDietaryRestrictions = (restrictions: string[]): string[] => {
     if (!restrictions || restrictions.length === 0) return [];
     // Remove the "None" marker and convert to lowercase matching database enum
