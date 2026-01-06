@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/utils/supabase";
-import Navigation from "@/components/Navigation";
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -75,38 +74,34 @@ export default function Landing() {
   }
 
   return (
-    <div className="landing-wrapper">
-      <Navigation />
+    <div className="landing-hero">
+      <h1 className="landing-name-primary">Josie Johnson</h1>
+      <p className="landing-separator">–and–</p>
+      <h1 className="landing-name-secondary">Ivan Gomez</h1>
 
-      <main className="landing-main">
-        <div className="landing-hero">
-          <h1 className="landing-name-primary">Josie Johnson</h1>
-          <p className="landing-separator">–and–</p>
-          <h1 className="landing-name-secondary">Ivan Gomez</h1>
+      <div className="landing-divider"></div>
 
-          <div className="landing-divider"></div>
+      <p className="landing-date">January 7, 2027</p>
+      <p className="landing-location">Antigua, Guatemala</p>
 
-          <p className="landing-date">January 7, 2027</p>
-          <p className="landing-location">Antigua, Guatemala</p>
+      <p className="landing-invitation">
+        Please log in with your invitation credentials to view wedding
+        details and RSVP.
+      </p>
 
-          <p className="landing-invitation">
-            Please log in with your invitation credentials to view wedding
-            details and RSVP.
-          </p>
-
-          <button onClick={() => navigate("/login")} className="landing-login-button">
-            LOG IN
-          </button>
-        </div>
-      </main>
+      <button onClick={() => navigate("/login")} className="landing-login-button">
+        LOG IN
+      </button>
 
       <style>{`
-        .landing-wrapper {
+        .landing-hero {
           display: flex;
           flex-direction: column;
-          min-height: 100vh;
-          background-color: #ffffff;
-          font-family: "orpheuspro", serif;
+          align-items: center;
+          justify-content: center;
+          min-height: 100%;
+          padding: 2rem;
+          text-align: center;
         }
 
         .landing-loading {
@@ -132,25 +127,13 @@ export default function Landing() {
           }
         }
 
-        .landing-main {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 2rem;
-        }
-
-        .landing-hero {
-          text-align: center;
-          max-width: 600px;
-        }
-
         .landing-name-primary {
           font-size: 4rem;
           font-weight: 400;
           margin: 0 0 0.5rem 0;
           letter-spacing: 0.02em;
           line-height: 1.1;
+          font-family: "orpheuspro", serif;
         }
 
         .landing-separator {
@@ -160,6 +143,7 @@ export default function Landing() {
           margin: 0.5rem 0;
           color: #666666;
           letter-spacing: 0.02em;
+          font-family: "orpheuspro", serif;
         }
 
         .landing-name-secondary {
@@ -168,6 +152,7 @@ export default function Landing() {
           margin: 0.5rem 0 2rem 0;
           letter-spacing: 0.02em;
           line-height: 1.1;
+          font-family: "orpheuspro", serif;
         }
 
         .landing-divider {
@@ -182,6 +167,7 @@ export default function Landing() {
           font-weight: 400;
           margin: 0 0 0.5rem 0;
           letter-spacing: 0.01em;
+          font-family: "orpheuspro", serif;
         }
 
         .landing-location {
@@ -189,6 +175,7 @@ export default function Landing() {
           font-weight: 400;
           margin: 0 0 2.5rem 0;
           letter-spacing: 0.01em;
+          font-family: "orpheuspro", serif;
         }
 
         .landing-invitation {
@@ -198,6 +185,8 @@ export default function Landing() {
           color: #666666;
           margin: 0 0 2.5rem 0;
           letter-spacing: 0.005em;
+          max-width: 600px;
+          font-family: "orpheuspro", serif;
         }
 
         .landing-login-button {
@@ -242,10 +231,6 @@ export default function Landing() {
         }
 
         @media (max-width: 480px) {
-          .landing-main {
-            padding: 1.5rem 1rem;
-          }
-
           .landing-name-primary,
           .landing-name-secondary {
             font-size: 2rem;
