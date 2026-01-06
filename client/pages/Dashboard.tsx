@@ -1428,6 +1428,81 @@ export default function Dashboard() {
           color: #333333;
         }
 
+        .dashboard-rsvp-subheading-spaced {
+          margin-top: 1.5rem;
+        }
+
+        .dashboard-rsvp-checkbox-inline {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          font-size: 0.95rem;
+          font-family: "orpheuspro", serif;
+          color: #333333;
+          cursor: pointer;
+          margin-bottom: 0.75rem;
+        }
+
+        .dashboard-rsvp-checkbox-inline input {
+          width: 18px;
+          height: 18px;
+          cursor: pointer;
+          accent-color: #000000;
+        }
+
+        .dashboard-rsvp-nested-options {
+          margin-left: 2rem;
+          margin-top: 0.75rem;
+          padding: 0.75rem;
+          background-color: #ffffff;
+          border-left: 2px solid #000000;
+        }
+
+        .dashboard-rsvp-option-label {
+          font-size: 0.85rem;
+          font-weight: 500;
+          margin: 0 0 0.75rem 0;
+          font-family: "orpheuspro", serif;
+          color: #666666;
+        }
+
+        .dashboard-rsvp-option-buttons {
+          display: flex;
+          flex-direction: row;
+          gap: 0.5rem;
+        }
+
+        .dashboard-rsvp-option-btn {
+          flex: 1;
+          padding: 0.6rem;
+          background-color: #ffffff;
+          color: #000000;
+          border: 1px solid #e5e5e5;
+          border-radius: 4px;
+          font-size: 0.85rem;
+          font-family: "orpheuspro", serif;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          text-align: center;
+          font-weight: 400;
+        }
+
+        .dashboard-rsvp-option-btn:hover:not(:disabled) {
+          border-color: #000000;
+          background-color: #f9f9f9;
+        }
+
+        .dashboard-rsvp-option-btn.active {
+          background-color: #000000;
+          color: #ffffff;
+          border-color: #000000;
+        }
+
+        .dashboard-rsvp-option-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
         .dashboard-dietary-checkboxes {
           display: grid;
           grid-template-columns: 1fr 1fr;
