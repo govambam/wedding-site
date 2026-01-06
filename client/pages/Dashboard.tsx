@@ -1178,6 +1178,10 @@ export default function Dashboard() {
           flex-direction: column;
         }
 
+        .dashboard-form-group-spaced {
+          margin-top: 2rem;
+        }
+
         .dashboard-label {
           font-size: 0.9rem;
           font-weight: 500;
