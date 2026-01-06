@@ -6,6 +6,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Layout from "./components/Layout";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Wedding from "./pages/Wedding";
@@ -26,17 +27,86 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Landing />} />
+          {/* Public pages with Layout (persistent Navigation) */}
+          <Route
+            path="/"
+            element={
+              <Layout>
+                <Landing />
+              </Layout>
+            }
+          />
+
+          {/* Login page (no Layout, separate styling) */}
           <Route path="/login" element={<Login />} />
-          <Route path="/wedding" element={<Wedding />} />
-          <Route path="/travel" element={<Travel />} />
-          <Route path="/accommodations" element={<Accommodations />} />
-          <Route path="/registry" element={<Registry />} />
-          <Route path="/atitlan" element={<Atitlan />} />
-          <Route path="/rsvp" element={<RSVP />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
+
+          {/* Authenticated pages with Layout (persistent Navigation) */}
+          <Route
+            path="/wedding"
+            element={
+              <Layout>
+                <Wedding />
+              </Layout>
+            }
+          />
+          <Route
+            path="/travel"
+            element={
+              <Layout>
+                <Travel />
+              </Layout>
+            }
+          />
+          <Route
+            path="/accommodations"
+            element={
+              <Layout>
+                <Accommodations />
+              </Layout>
+            }
+          />
+          <Route
+            path="/registry"
+            element={
+              <Layout>
+                <Registry />
+              </Layout>
+            }
+          />
+          <Route
+            path="/atitlan"
+            element={
+              <Layout>
+                <Atitlan />
+              </Layout>
+            }
+          />
+          <Route
+            path="/rsvp"
+            element={
+              <Layout>
+                <RSVP />
+              </Layout>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <Layout>
+                <Dashboard />
+              </Layout>
+            }
+          />
+
+          {/* Catch-all */}
+          <Route
+            path="*"
+            element={
+              <Layout>
+                <NotFound />
+              </Layout>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
