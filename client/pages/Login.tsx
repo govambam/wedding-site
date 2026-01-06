@@ -108,7 +108,7 @@ export default function Login() {
             <form onSubmit={showMagicLink ? handleMagicLink : handleSubmit} className="login-form">
               <div className="login-form-group">
                 <label htmlFor="email" className="login-label">
-                  Username
+                  Email
                 </label>
                 <input
                   id="email"
