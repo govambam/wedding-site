@@ -1415,6 +1415,11 @@ export default function Dashboard() {
           .dashboard-button-secondary {
             margin-left: 0;
           }
+
+          .dashboard-transfer-inline {
+            margin: 0.75rem 0;
+            padding: 1rem;
+          }
         }
       `}</style>
     </div>
