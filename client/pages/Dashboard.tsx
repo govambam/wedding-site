@@ -409,7 +409,7 @@ export default function Dashboard() {
           Manage your wedding details and travel information
         </p>
 
-        {/* SECTION 1: RSVP Summary */}
+        {/* SECTION 1: RSVP Summary & Update Form */}
         <div className="dashboard-card">
           <h2 className="dashboard-card-heading">Your RSVP</h2>
 
@@ -501,12 +501,112 @@ export default function Dashboard() {
               )}
           </div>
 
-          <button
-            className="dashboard-button"
-            onClick={() => navigate("/rsvp")}
-          >
-            Update RSVP
-          </button>
+          {/* Inline RSVP Update Form */}
+          {!showRsvpForm ? (
+            <button
+              className="dashboard-button"
+              onClick={() => setShowRsvpForm(true)}
+            >
+              Update RSVP
+            </button>
+          ) : (
+            <div className="dashboard-rsvp-form-wrapper">
+              <h3 className="dashboard-form-title">Update RSVP Details</h3>
+
+              {userData.allGuests.map((guest) => {
+                const formData = rsvpFormState[guest.id];
+                if (!formData) return null;
+
+                return (
+                  <div key={guest.id} className="dashboard-rsvp-guest-section">
+                    <div className="dashboard-rsvp-guest-header">
+                      <label className="dashboard-checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={formData.attending || false}
+                          onChange={(e) =>
+                            setRsvpFormState((prev) => ({
+                              ...prev,
+                              [guest.id]: {
+                                ...formData,
+                                attending: e.target.checked,
+                              },
+                            }))
+                          }
+                          disabled={savingRsvp}
+                        />
+                        <span>
+                          {guest.first_name} {guest.last_name} is attending
+                        </span>
+                      </label>
+                    </div>
+
+                    {formData.attending && (
+                      <div className="dashboard-rsvp-guest-details">
+                        <h4 className="dashboard-rsvp-subheading">
+                          Dietary Restrictions
+                        </h4>
+                        <div className="dashboard-dietary-checkboxes">
+                          {[
+                            "Vegetarian",
+                            "Vegan",
+                            "Pescatarian",
+                            "Dairy-Free",
+                            "Gluten-Free",
+                            "Nut Allergy",
+                            "Other",
+                            "None",
+                          ].map((option) => (
+                            <label
+                              key={option}
+                              className="dashboard-dietary-checkbox"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isDietaryOptionSelected(
+                                  formData.dietary_restrictions,
+                                  option
+                                )}
+                                onChange={(e) =>
+                                  handleRsvpDietaryChange(
+                                    guest.id,
+                                    option,
+                                    e.target.checked
+                                  )
+                                }
+                                disabled={savingRsvp}
+                              />
+                              <span>{option}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              <div className="dashboard-rsvp-form-actions">
+                <button
+                  className="dashboard-button"
+                  onClick={saveRsvpUpdate}
+                  disabled={savingRsvp}
+                >
+                  {savingRsvp ? "Saving..." : "Save Changes"}
+                </button>
+                <button
+                  className="dashboard-button-secondary"
+                  onClick={() => {
+                    setShowRsvpForm(false);
+                    setRsvpFormState(rsvpResponses);
+                  }}
+                  disabled={savingRsvp}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* SECTION 2: Travel Information */}
