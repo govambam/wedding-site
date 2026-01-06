@@ -37,10 +37,12 @@ export default function Navigation() {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event) => {
+        console.log("Auth state changed:", event);
         if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
           if (event === "SIGNED_IN") {
-            await fetchGuestData();
+            await fetchUserData();
           } else {
+            console.log("User signed out");
             setIsLoggedIn(false);
             setUserData(null);
           }
@@ -71,6 +73,7 @@ export default function Navigation() {
 
   const checkAuth = async () => {
     try {
+      console.log("Checking authentication...");
       const { data, error: sessionError } = await supabase.auth.getSession();
 
       if (sessionError) {
@@ -81,9 +84,11 @@ export default function Navigation() {
       }
 
       if (data.session) {
+        console.log("Session found for user:", data.session.user.id);
         setIsLoggedIn(true);
-        await fetchGuestData();
+        await fetchUserData();
       } else {
+        console.log("No session found");
         setIsLoggedIn(false);
         setLoading(false);
       }
@@ -94,7 +99,7 @@ export default function Navigation() {
     }
   };
 
-  const fetchGuestData = async () => {
+  const fetchUserData = async () => {
     try {
       const { data: sessionData, error: sessionError } =
         await supabase.auth.getSession();
@@ -107,44 +112,91 @@ export default function Navigation() {
       }
 
       const userId = sessionData.session.user.id;
+      console.log("Fetching user data for:", userId);
 
       // Step 1: Get current user's guest record
-      const { data: currentGuest, error: guestError } = await supabase
+      console.log("Step 1: Fetching guest record...");
+      const { data: guest, error: guestError } = await supabase
         .from("guests")
         .select("*")
         .eq("user_id", userId)
         .single();
 
-      if (guestError) throw guestError;
-      if (!currentGuest) throw new Error("Guest not found");
+      console.log("Guest data:", guest, "Error:", guestError);
 
-      // Step 2: Get the invite for this guest
+      if (guestError) {
+        console.error("Guest fetch error:", guestError);
+        setUserData(null);
+        setLoading(false);
+        return;
+      }
+
+      if (!guest) {
+        console.error("No guest found for user");
+        setUserData(null);
+        setLoading(false);
+        return;
+      }
+
+      // Step 2: Get invite
+      console.log("Step 2: Fetching invite for invite_id:", guest.invite_id);
       const { data: invite, error: inviteError } = await supabase
         .from("invites")
         .select("*")
-        .eq("id", currentGuest.invite_id)
+        .eq("id", guest.invite_id)
         .single();
 
-      if (inviteError) throw inviteError;
+      console.log("Invite data:", invite, "Error:", inviteError);
 
-      // Step 3: Get all guests for this invite
+      if (inviteError) {
+        console.error("Invite fetch error:", inviteError);
+        setUserData(null);
+        setLoading(false);
+        return;
+      }
+
+      if (!invite) {
+        console.error("No invite found");
+        setUserData(null);
+        setLoading(false);
+        return;
+      }
+
+      // Step 3: Get all guests in invite
+      console.log("Step 3: Fetching all guests for invite_id:", guest.invite_id);
       const { data: allGuests, error: allGuestsError } = await supabase
         .from("guests")
         .select("*")
-        .eq("invite_id", currentGuest.invite_id)
+        .eq("invite_id", guest.invite_id)
         .order("is_primary", { ascending: false });
 
-      if (allGuestsError) throw allGuestsError;
+      console.log("All guests:", allGuests, "Error:", allGuestsError);
 
-      // Store all data for use in navigation
-      setUserData({
-        currentGuest: currentGuest as Guest,
+      if (allGuestsError) {
+        console.error("All guests fetch error:", allGuestsError);
+        setUserData(null);
+        setLoading(false);
+        return;
+      }
+
+      if (!allGuests || allGuests.length === 0) {
+        console.error("No guests found for invite");
+        setUserData(null);
+        setLoading(false);
+        return;
+      }
+
+      // Success - store all data
+      const userData: UserData = {
+        currentGuest: guest as Guest,
         invite: invite as Invite,
-        allGuests: (allGuests || []) as Guest[],
-      });
+        allGuests: allGuests as Guest[],
+      };
+
+      console.log("User data loaded successfully:", userData);
+      setUserData(userData);
     } catch (error: any) {
-      console.error("Error fetching guest data:", error.message);
-      // Show navigation anyway, but without personalized data
+      console.error("Unexpected error fetching user data:", error);
       setUserData(null);
     } finally {
       setLoading(false);
@@ -152,23 +204,32 @@ export default function Navigation() {
   };
 
   const getGuestDisplayName = () => {
-    if (!userData?.allGuests) return "Guest";
+    if (!userData?.allGuests || userData.allGuests.length === 0) {
+      return "Guest";
+    }
 
     // Filter guests with first_name (excludes +1s not yet added)
     const namedGuests = userData.allGuests.filter(
       (g) => g.first_name && g.last_name
     );
 
+    console.log("Named guests for display:", namedGuests);
+
     if (namedGuests.length === 1) {
-      return `${namedGuests[0].first_name} ${namedGuests[0].last_name}`;
+      const name = `${namedGuests[0].first_name} ${namedGuests[0].last_name}`;
+      console.log("Single guest display name:", name);
+      return name;
     } else if (namedGuests.length > 1) {
-      return namedGuests.map((g) => g.first_name).join(" & ");
+      const name = namedGuests.map((g) => g.first_name).join(" & ");
+      console.log("Multiple guests display name:", name);
+      return name;
     }
 
     return "Guest";
   };
 
   const handleLogout = async () => {
+    console.log("Logging out...");
     await supabase.auth.signOut();
     setIsLoggedIn(false);
     setUserData(null);
@@ -184,6 +245,13 @@ export default function Navigation() {
     setShowDropdown(false);
     navigate("/dashboard");
   };
+
+  console.log("Navigation render:", {
+    isLoggedIn,
+    loading,
+    hasUserData: !!userData,
+    rsvpStatus: userData?.invite?.rsvp_status,
+  });
 
   return (
     <nav className="nav-container">
@@ -461,11 +529,6 @@ export default function Navigation() {
 
         .nav-dropdown-item:hover {
           background-color: #f5f5f5;
-        }
-
-        .nav-dropdown-item:first-child {
-          border-top-left-radius: 0;
-          border-top-right-radius: 0;
         }
 
         .nav-dropdown-logout {
