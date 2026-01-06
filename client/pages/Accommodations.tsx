@@ -1,31 +1,17 @@
-import Navigation from "@/components/Navigation";
-
 export default function Accommodations() {
   return (
-    <div className="page-wrapper">
-      <Navigation />
-      <main className="page-main">
-        <div className="page-content">
-          <h1 className="page-title">Accommodations</h1>
-          <p className="page-placeholder">
-            This page will contain hotel recommendations, room blocks, and accommodation details for the wedding weekend.
-          </p>
-          <p className="page-prompt">
-            Continue prompting to fill in this page content.
-          </p>
-        </div>
-      </main>
+    <div className="page-content-wrapper">
+      <div className="page-content">
+        <h1 className="page-title">Accommodations</h1>
+        <p className="page-placeholder">
+          This page will contain hotel recommendations, room blocks, and accommodation details for the wedding weekend.
+        </p>
+        <p className="page-prompt">
+          Continue prompting to fill in this page content.
+        </p>
+      </div>
       <style>{`
-        .page-wrapper {
-          display: flex;
-          flex-direction: column;
-          min-height: 100vh;
-          background-color: #ffffff;
-          font-family: "orpheuspro", serif;
-        }
-
-        .page-main {
-          flex: 1;
+        .page-content-wrapper {
           padding: 4rem 2rem;
         }
 
@@ -39,6 +25,7 @@ export default function Accommodations() {
           font-weight: 400;
           margin: 0 0 2rem 0;
           letter-spacing: 0.02em;
+          font-family: "orpheuspro", serif;
         }
 
         .page-placeholder {
@@ -46,12 +33,14 @@ export default function Accommodations() {
           line-height: 1.8;
           color: #666666;
           margin: 0 0 1rem 0;
+          font-family: "orpheuspro", serif;
         }
 
         .page-prompt {
           font-size: 0.95rem;
           color: #999999;
           font-style: italic;
+          font-family: "orpheuspro", serif;
         }
 
         @media (max-width: 768px) {
@@ -59,7 +48,7 @@ export default function Accommodations() {
             font-size: 2rem;
           }
 
-          .page-main {
+          .page-content-wrapper {
             padding: 2rem 1.5rem;
           }
         }
