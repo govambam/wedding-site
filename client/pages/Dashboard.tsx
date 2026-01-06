@@ -580,6 +580,146 @@ export default function Dashboard() {
                             </label>
                           ))}
                         </div>
+
+                        <h4 className="dashboard-rsvp-subheading dashboard-rsvp-subheading-spaced">
+                          Accommodations
+                        </h4>
+                        <label className="dashboard-rsvp-checkbox-inline">
+                          <input
+                            type="checkbox"
+                            checked={formData.accommodation_needed || false}
+                            onChange={(e) =>
+                              setRsvpFormState((prev) => ({
+                                ...prev,
+                                [guest.id]: {
+                                  ...formData,
+                                  accommodation_needed: e.target.checked,
+                                  accommodation_payment_level: e.target.checked
+                                    ? "full"
+                                    : null,
+                                },
+                              }))
+                            }
+                            disabled={savingRsvp}
+                          />
+                          <span>Staying at accommodation</span>
+                        </label>
+
+                        {formData.accommodation_needed && (
+                          <div className="dashboard-rsvp-nested-options">
+                            <p className="dashboard-rsvp-option-label">
+                              Contribution:
+                            </p>
+                            <div className="dashboard-rsvp-option-buttons">
+                              {["none", "half", "full"].map((level) => {
+                                const labels: Record<string, string> = {
+                                  none: "$0",
+                                  half: "$100",
+                                  full: "$200",
+                                };
+                                return (
+                                  <button
+                                    key={level}
+                                    className={`dashboard-rsvp-option-btn ${
+                                      formData.accommodation_payment_level ===
+                                      level
+                                        ? "active"
+                                        : ""
+                                    }`}
+                                    onClick={() =>
+                                      setRsvpFormState((prev) => ({
+                                        ...prev,
+                                        [guest.id]: {
+                                          ...formData,
+                                          accommodation_payment_level:
+                                            level as
+                                              | "none"
+                                              | "half"
+                                              | "full",
+                                        },
+                                      }))
+                                    }
+                                    disabled={savingRsvp}
+                                  >
+                                    {labels[level]}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {userData?.invite.invited_to_atitlan && (
+                          <>
+                            <h4 className="dashboard-rsvp-subheading dashboard-rsvp-subheading-spaced">
+                              Lake Atitlan
+                            </h4>
+                            <label className="dashboard-rsvp-checkbox-inline">
+                              <input
+                                type="checkbox"
+                                checked={formData.atitlan_attending || false}
+                                onChange={(e) =>
+                                  setRsvpFormState((prev) => ({
+                                    ...prev,
+                                    [guest.id]: {
+                                      ...formData,
+                                      atitlan_attending: e.target.checked,
+                                      atitlan_payment_level: e.target.checked
+                                        ? "full"
+                                        : null,
+                                    },
+                                  }))
+                                }
+                                disabled={savingRsvp}
+                              />
+                              <span>Attending Lake Atitlan celebration</span>
+                            </label>
+
+                            {formData.atitlan_attending && (
+                              <div className="dashboard-rsvp-nested-options">
+                                <p className="dashboard-rsvp-option-label">
+                                  Contribution:
+                                </p>
+                                <div className="dashboard-rsvp-option-buttons">
+                                  {["none", "half", "full"].map((level) => {
+                                    const labels: Record<string, string> = {
+                                      none: "$0",
+                                      half: "$75",
+                                      full: "$150",
+                                    };
+                                    return (
+                                      <button
+                                        key={level}
+                                        className={`dashboard-rsvp-option-btn ${
+                                          formData.atitlan_payment_level ===
+                                          level
+                                            ? "active"
+                                            : ""
+                                        }`}
+                                        onClick={() =>
+                                          setRsvpFormState((prev) => ({
+                                            ...prev,
+                                            [guest.id]: {
+                                              ...formData,
+                                              atitlan_payment_level:
+                                                level as
+                                                  | "none"
+                                                  | "half"
+                                                  | "full",
+                                            },
+                                          }))
+                                        }
+                                        disabled={savingRsvp}
+                                      >
+                                        {labels[level]}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
