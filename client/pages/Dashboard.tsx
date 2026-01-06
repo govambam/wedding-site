@@ -820,30 +820,6 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* SECTION 2.5: Transfer Details */}
-        {attendingGuests.some((g) => travelDetails[g.id]?.needs_transfer) && (
-          <div className="dashboard-card">
-            <h2 className="dashboard-card-heading">Airport Transfer Details</h2>
-
-            {attendingGuests
-              .filter((g) => travelDetails[g.id]?.needs_transfer)
-              .map((guest) => (
-                <div key={guest.id} className="dashboard-transfer-section">
-                  <h3 className="dashboard-transfer-heading">
-                    {guest.first_name} {guest.last_name}
-                  </h3>
-                  <div className="dashboard-transfer-empty-state">
-                    <p>
-                      Transfer details will be shared with you once confirmed.
-                      We'll coordinate timing and meet-up information closer to
-                      the wedding date.
-                    </p>
-                  </div>
-                </div>
-              ))}
-          </div>
-        )}
-
         {/* SECTION 3: Payments & Contributions */}
         <div className="dashboard-card">
           <h2 className="dashboard-card-heading">
