@@ -1414,25 +1414,31 @@ export default function Dashboard() {
             gap: 1rem;
           }
 
-          .dashboard-quick-links {
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 1rem;
+          .dashboard-payment-grid {
+            grid-template-columns: 1fr;
           }
 
-          .dashboard-quick-link {
+          .dashboard-rsvp-form-wrapper {
             padding: 1rem;
           }
 
-          .dashboard-quick-link-icon {
-            font-size: 1.5rem;
+          .dashboard-rsvp-guest-details {
+            margin-left: 1rem;
+            padding: 1rem;
           }
 
-          .dashboard-quick-link-text {
-            font-size: 0.8rem;
-          }
-
-          .dashboard-payment-grid {
+          .dashboard-dietary-checkboxes {
             grid-template-columns: 1fr;
+            gap: 0.5rem;
+          }
+
+          .dashboard-rsvp-form-actions {
+            flex-direction: column;
+            gap: 0.75rem;
+          }
+
+          .dashboard-button-secondary {
+            margin-left: 0;
           }
         }
       `}</style>
