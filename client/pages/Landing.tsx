@@ -13,24 +13,43 @@ export default function Landing() {
 
   const checkAuthAndRedirect = async () => {
     try {
-      const { data } = await supabase.auth.getSession();
+      const { data, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error("Session fetch error:", sessionError);
+        setLoading(false);
+        return;
+      }
 
       if (data.session) {
         // User is logged in, fetch their RSVP status
-        const { data: guest } = await supabase
-          .from("guests")
-          .select(
+        try {
+          const { data: guest, error: guestError } = await supabase
+            .from("guests")
+            .select(
+              `
+              *,
+              invites!inner(rsvp_status)
             `
-            *,
-            invites!inner(rsvp_status)
-          `
-          )
-          .eq("user_id", data.session.user.id)
-          .single();
+            )
+            .eq("user_id", data.session.user.id)
+            .single();
 
-        if (guest?.invites?.rsvp_status === "pending") {
-          navigate("/rsvp", { replace: true });
-        } else {
+          if (guestError) {
+            console.error("Guest fetch error:", guestError);
+            // Redirect to wedding as fallback
+            navigate("/wedding", { replace: true });
+            return;
+          }
+
+          if (guest?.invites?.rsvp_status === "pending") {
+            navigate("/rsvp", { replace: true });
+          } else {
+            navigate("/wedding", { replace: true });
+          }
+        } catch (fetchErr) {
+          console.error("Error fetching guest data:", fetchErr);
+          // Fallback to wedding page
           navigate("/wedding", { replace: true });
         }
       } else {
