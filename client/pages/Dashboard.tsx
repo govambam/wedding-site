@@ -595,7 +595,7 @@ export default function Dashboard() {
                   {savingRsvp ? "Saving..." : "Save Changes"}
                 </button>
                 <button
-                  className="dashboard-button-secondary"
+                  className="dashboard-button dashboard-button-white"
                   onClick={() => {
                     setShowRsvpForm(false);
                     setRsvpFormState(rsvpResponses);
