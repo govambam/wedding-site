@@ -1627,6 +1627,14 @@ export default function Dashboard() {
             margin: 0.75rem 0;
             padding: 1rem;
           }
+
+          .dashboard-rsvp-nested-options {
+            margin-left: 1rem;
+          }
+
+          .dashboard-rsvp-option-buttons {
+            flex-wrap: wrap;
+          }
         }
       `}</style>
     </div>
