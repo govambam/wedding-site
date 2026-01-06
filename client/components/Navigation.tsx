@@ -8,28 +8,27 @@ interface Guest {
   last_name: string;
   user_id: string;
   email: string;
+  invite_id: string;
+  is_primary: boolean;
 }
 
 interface Invite {
   id: string;
   invited_to_atitlan: boolean;
   rsvp_status: string;
-  guests: Guest[];
 }
 
-interface CurrentGuest {
-  id: string;
-  user_id: string;
-  first_name: string;
-  last_name: string;
-  invites: Invite;
+interface UserData {
+  currentGuest: Guest;
+  invite: Invite;
+  allGuests: Guest[];
 }
 
 export default function Navigation() {
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
-  const [currentGuest, setCurrentGuest] = useState<CurrentGuest | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -43,7 +42,7 @@ export default function Navigation() {
             await fetchGuestData();
           } else {
             setIsLoggedIn(false);
-            setCurrentGuest(null);
+            setUserData(null);
           }
         }
       }
@@ -72,7 +71,15 @@ export default function Navigation() {
 
   const checkAuth = async () => {
     try {
-      const { data } = await supabase.auth.getSession();
+      const { data, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error("Session check error:", sessionError);
+        setIsLoggedIn(false);
+        setLoading(false);
+        return;
+      }
+
       if (data.session) {
         setIsLoggedIn(true);
         await fetchGuestData();
@@ -89,56 +96,82 @@ export default function Navigation() {
 
   const fetchGuestData = async () => {
     try {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
 
       if (sessionError || !sessionData.session) {
         console.error("Session error:", sessionError);
+        setUserData(null);
         setLoading(false);
         return;
       }
 
-      const { data: guest, error } = await supabase
+      const userId = sessionData.session.user.id;
+
+      // Step 1: Get current user's guest record
+      const { data: currentGuest, error: guestError } = await supabase
         .from("guests")
-        .select(
-          `
-          *,
-          invites!inner(
-            *,
-            guests(*)
-          )
-        `
-        )
-        .eq("user_id", sessionData.session.user.id)
+        .select("*")
+        .eq("user_id", userId)
         .single();
 
-      if (error) {
-        console.error("Error fetching guest data:", error);
-        // Still set loading to false even if there's an error
-      } else if (guest) {
-        setCurrentGuest(guest as CurrentGuest);
-      }
-    } catch (err) {
-      console.error("Guest data fetch error:", err);
+      if (guestError) throw guestError;
+      if (!currentGuest) throw new Error("Guest not found");
+
+      // Step 2: Get the invite for this guest
+      const { data: invite, error: inviteError } = await supabase
+        .from("invites")
+        .select("*")
+        .eq("id", currentGuest.invite_id)
+        .single();
+
+      if (inviteError) throw inviteError;
+
+      // Step 3: Get all guests for this invite
+      const { data: allGuests, error: allGuestsError } = await supabase
+        .from("guests")
+        .select("*")
+        .eq("invite_id", currentGuest.invite_id)
+        .order("is_primary", { ascending: false });
+
+      if (allGuestsError) throw allGuestsError;
+
+      // Store all data for use in navigation
+      setUserData({
+        currentGuest: currentGuest as Guest,
+        invite: invite as Invite,
+        allGuests: (allGuests || []) as Guest[],
+      });
+    } catch (error: any) {
+      console.error("Error fetching guest data:", error.message);
+      // Show navigation anyway, but without personalized data
+      setUserData(null);
     } finally {
       setLoading(false);
     }
   };
 
   const getGuestDisplayName = () => {
-    if (!currentGuest?.invites?.guests) return "Guest";
+    if (!userData?.allGuests) return "Guest";
 
-    const guests = currentGuest.invites.guests;
-    if (guests.length === 1) {
-      return `${guests[0].first_name} ${guests[0].last_name}`;
-    } else {
-      return guests.map((g) => g.first_name).join(" & ");
+    // Filter guests with first_name (excludes +1s not yet added)
+    const namedGuests = userData.allGuests.filter(
+      (g) => g.first_name && g.last_name
+    );
+
+    if (namedGuests.length === 1) {
+      return `${namedGuests[0].first_name} ${namedGuests[0].last_name}`;
+    } else if (namedGuests.length > 1) {
+      return namedGuests.map((g) => g.first_name).join(" & ");
     }
+
+    return "Guest";
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setIsLoggedIn(false);
-    setCurrentGuest(null);
+    setUserData(null);
     navigate("/");
   };
 
@@ -156,31 +189,63 @@ export default function Navigation() {
     <nav className="nav-container">
       <div className="nav-content">
         <div className="nav-logo">
-          <button
-            onClick={() => navigate("/")}
-            className="nav-logo-button"
-          >
+          <button onClick={() => navigate("/")} className="nav-logo-button">
             Josie & Ivan
           </button>
         </div>
 
-        {!loading && isLoggedIn && currentGuest && (
+        {!loading && isLoggedIn && userData && (
           <>
             <div className="nav-links">
-              <a href="#" onClick={(e) => { e.preventDefault(); navigate("/wedding"); }} className="nav-link">
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/wedding");
+                }}
+                className="nav-link"
+              >
                 WEDDING
               </a>
-              <a href="#" onClick={(e) => { e.preventDefault(); navigate("/travel"); }} className="nav-link">
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/travel");
+                }}
+                className="nav-link"
+              >
                 TRAVEL
               </a>
-              <a href="#" onClick={(e) => { e.preventDefault(); navigate("/accommodations"); }} className="nav-link">
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/accommodations");
+                }}
+                className="nav-link"
+              >
                 ACCOMMODATIONS
               </a>
-              <a href="#" onClick={(e) => { e.preventDefault(); navigate("/registry"); }} className="nav-link">
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/registry");
+                }}
+                className="nav-link"
+              >
                 REGISTRY
               </a>
-              {currentGuest.invites?.invited_to_atitlan && (
-                <a href="#" onClick={(e) => { e.preventDefault(); navigate("/atitlan"); }} className="nav-link">
+              {userData.invite?.invited_to_atitlan && (
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate("/atitlan");
+                  }}
+                  className="nav-link"
+                >
                   LAKE ATITLAN
                 </a>
               )}
@@ -197,7 +262,7 @@ export default function Navigation() {
 
               {showDropdown && (
                 <div className="nav-dropdown">
-                  {currentGuest.invites?.rsvp_status === "pending" ? (
+                  {userData.invite?.rsvp_status === "pending" ? (
                     <button
                       onClick={handleRsvpClick}
                       className="nav-dropdown-item"
@@ -213,7 +278,7 @@ export default function Navigation() {
                     </button>
                   )}
 
-                  {currentGuest.invites?.rsvp_status === "confirmed" && (
+                  {userData.invite?.rsvp_status === "confirmed" && (
                     <>
                       <div className="nav-dropdown-separator"></div>
                       <button
@@ -236,6 +301,29 @@ export default function Navigation() {
               )}
             </div>
           </>
+        )}
+
+        {!loading && isLoggedIn && !userData && (
+          <div className="nav-user-menu" ref={dropdownRef}>
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="nav-user-button"
+            >
+              Account
+              <span className="nav-dropdown-arrow">▼</span>
+            </button>
+
+            {showDropdown && (
+              <div className="nav-dropdown">
+                <button
+                  onClick={handleLogout}
+                  className="nav-dropdown-item nav-dropdown-logout"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         {!loading && !isLoggedIn && (
