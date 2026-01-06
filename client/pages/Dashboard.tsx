@@ -882,34 +882,12 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* SECTION 4: Quick Links */}
+        {/* SECTION 5: Helpful Links */}
         <div className="dashboard-card">
-          <h2 className="dashboard-card-heading">Helpful Information</h2>
-
-          <div className="dashboard-quick-links">
-            <a href="/wedding" className="dashboard-quick-link">
-              <span className="dashboard-quick-link-icon">📅</span>
-              <span className="dashboard-quick-link-text">Wedding Details</span>
-            </a>
-            <a href="/travel" className="dashboard-quick-link">
-              <span className="dashboard-quick-link-icon">✈️</span>
-              <span className="dashboard-quick-link-text">Travel Info</span>
-            </a>
-            <a href="/accommodations" className="dashboard-quick-link">
-              <span className="dashboard-quick-link-icon">🏨</span>
-              <span className="dashboard-quick-link-text">Accommodations</span>
-            </a>
-            <a href="/registry" className="dashboard-quick-link">
-              <span className="dashboard-quick-link-icon">💝</span>
-              <span className="dashboard-quick-link-text">Registry</span>
-            </a>
-            {userData.invite.invited_to_atitlan && (
-              <a href="/atitlan" className="dashboard-quick-link">
-                <span className="dashboard-quick-link-icon">🌊</span>
-                <span className="dashboard-quick-link-text">Lake Atitlan</span>
-              </a>
-            )}
-          </div>
+          <h2 className="dashboard-card-heading">Helpful Links</h2>
+          <p className="dashboard-links-placeholder">
+            Useful links will be shared here as we get closer to the wedding.
+          </p>
         </div>
       </div>
 
