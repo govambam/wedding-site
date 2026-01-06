@@ -36,8 +36,6 @@ interface AccommodationGroup {
   payment_options: number[];
 }
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6;
-
 const DIETARY_OPTIONS = [
   "Vegetarian",
   "Vegan",
@@ -49,10 +47,17 @@ const DIETARY_OPTIONS = [
   "None",
 ];
 
+const DIETARY_LEFT_COLUMN = [
+  "Vegetarian",
+  "Pescatarian",
+  "Gluten-Free",
+  "Other",
+];
+const DIETARY_RIGHT_COLUMN = ["Vegan", "Dairy-Free", "Nut Allergy", "None"];
+
 export default function RSVP() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [currentStep, setCurrentStep] = useState<Step>(1);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -87,6 +92,7 @@ export default function RSVP() {
   const [atitlanPayments, setAtitlanPayments] = useState<
     Record<string, "none" | "half" | "full">
   >({});
+  const [formComplete, setFormComplete] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -179,6 +185,9 @@ export default function RSVP() {
 
   const handleAttendanceDecision = (attending: boolean) => {
     setAttendanceDecision(attending);
+    if (!attending) {
+      submitDecline();
+    }
   };
 
   const submitDecline = async () => {
@@ -216,62 +225,6 @@ export default function RSVP() {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleContinueFromStep1 = () => {
-    if (attendanceDecision === false) {
-      submitDecline();
-    } else {
-      setCurrentStep(2);
-    }
-  };
-
-  const handleContinueFromStep2 = async () => {
-    if (invite?.invite_type === "single") {
-      setCurrentStep(3);
-    } else if (invite?.invite_type === "couple") {
-      if (selectedAttendees.size === 0) {
-        setError("At least one guest must attend");
-        return;
-      }
-      setCurrentStep(3);
-    } else if (invite?.invite_type === "plusone") {
-      if (showPlusOneForm) {
-        if (!plusOneNames.firstName || !plusOneNames.lastName) {
-          setError("Please enter first and last name for your guest");
-          return;
-        }
-        // Create new guest
-        try {
-          const { data: newGuest } = await supabase
-            .from("guests")
-            .insert({
-              invite_id: invite.id,
-              first_name: plusOneNames.firstName,
-              last_name: plusOneNames.lastName,
-              is_primary: false,
-              email: null,
-              user_id: null,
-            })
-            .select()
-            .single();
-
-          if (newGuest) {
-            const updatedGuests = [...guests, newGuest as Guest];
-            setGuests(updatedGuests);
-            setSelectedAttendees(
-              new Set([...selectedAttendees, newGuest.id])
-            );
-          }
-        } catch (err) {
-          console.error("Error creating guest:", err);
-          setError("Failed to add guest");
-          return;
-        }
-      }
-      setCurrentStep(3);
-    }
-    setError("");
   };
 
   const handleAttendeesChange = (guestId: string, checked: boolean) => {
@@ -319,111 +272,105 @@ export default function RSVP() {
     );
   };
 
-  const handleContinueFromStep3 = () => {
+  const isDietaryComplete = () => {
     const attendingGuests = getAttendingGuests();
-    const hasInvalidDietary = attendingGuests.some(
-      (g) => !g.dietary_restrictions || g.dietary_restrictions.length === 0
+    return attendingGuests.every(
+      (g) => g.dietary_restrictions && g.dietary_restrictions.length > 0
     );
-
-    if (hasInvalidDietary) {
-      setError("Please select dietary restrictions for each guest");
-      return;
-    }
-
-    setError("");
-    setCurrentStep(4);
   };
 
-  const getStepProgressText = () => {
-    if (invite?.invited_to_atitlan) {
-      return `Step ${currentStep} of 6`;
+  const isGuestSelectionComplete = () => {
+    if (invite?.invite_type === "single") {
+      return true;
+    } else if (invite?.invite_type === "couple") {
+      return selectedAttendees.size > 0;
+    } else if (invite?.invite_type === "plusone") {
+      if (showPlusOneForm) {
+        return plusOneNames.firstName && plusOneNames.lastName;
+      }
+      return true;
+    }
+    return true;
+  };
+
+  const isAccommodationComplete = () => {
+    if (accommodationNeeded === null) return false;
+    if (accommodationNeeded && accommodationPayment === null) return false;
+    return true;
+  };
+
+  const isAtitlanComplete = () => {
+    if (!invite?.invited_to_atitlan) return true;
+    if (atitlanAttending === null) return false;
+    if (!atitlanAttending) return true;
+
+    if (getAttendingGuests().length === 1) {
+      const guest = getAttendingGuests()[0];
+      return atitlanPayments[guest.id] !== undefined;
     } else {
-      return `Step ${currentStep} of 5`;
-    }
-  };
-
-  const handleContinueFromStep4 = () => {
-    if (accommodationNeeded === null) {
-      setError("Please select whether you need accommodation");
-      return;
-    }
-
-    if (accommodationNeeded && accommodationPayment === null) {
-      setError("Please select your contribution level");
-      return;
-    }
-
-    // Update guests with accommodation info
-    setGuests(
-      guests.map((g) =>
-        selectedAttendees.has(g.id)
-          ? {
-              ...g,
-              accommodation_needed: accommodationNeeded,
-              accommodation_payment_level: accommodationPayment || "full",
-            }
-          : {
-              ...g,
-              accommodation_needed: false,
-              accommodation_payment_level: "full",
-            }
-      )
-    );
-
-    setError("");
-    if (invite?.invited_to_atitlan) {
-      setCurrentStep(5);
-    } else {
-      setCurrentStep(6);
-    }
-  };
-
-  const handleContinueFromStep5 = () => {
-    if (atitlanAttending === null) {
-      setError("Please select whether you'll attend Lake Atitlan");
-      return;
-    }
-
-    if (atitlanAttending) {
-      if (getAttendingGuests().length === 1) {
-        const guest = getAttendingGuests()[0];
-        if (!atitlanPayments[guest.id]) {
-          setError("Please select your contribution level");
-          return;
-        }
-      } else {
-        if (atitlanGuests.size === 0) {
-          setError("Please select at least one guest for Lake Atitlan");
-          return;
-        }
-        for (const guestId of atitlanGuests) {
-          if (!atitlanPayments[guestId]) {
-            setError("Please select contribution level for each guest");
-            return;
-          }
-        }
+      if (atitlanGuests.size === 0) return false;
+      for (const guestId of atitlanGuests) {
+        if (!atitlanPayments[guestId]) return false;
       }
     }
+    return true;
+  };
 
-    // Update guests with atitlan info
-    const updatedGuests = getAttendingGuests().map((g) => {
-      if (atitlanAttending && atitlanGuests.has(g.id)) {
-        return {
-          ...g,
-          atitlan_attending: true,
-          atitlan_payment_level: atitlanPayments[g.id] || "full",
-        };
+  const isFormComplete = () => {
+    if (attendanceDecision !== true) return false;
+    if (!isGuestSelectionComplete()) return false;
+    if (!isDietaryComplete()) return false;
+    if (!isAccommodationComplete()) return false;
+    if (!isAtitlanComplete()) return false;
+    return true;
+  };
+
+  useEffect(() => {
+    setFormComplete(isFormComplete());
+  }, [
+    attendanceDecision,
+    selectedAttendees,
+    showPlusOneForm,
+    plusOneNames,
+    guests,
+    accommodationNeeded,
+    accommodationPayment,
+    atitlanAttending,
+    atitlanGuests,
+    atitlanPayments,
+  ]);
+
+  const handleAddPlusOne = async () => {
+    if (!plusOneNames.firstName || !plusOneNames.lastName) {
+      setError("Please enter first and last name for your guest");
+      return;
+    }
+
+    try {
+      if (!invite) return;
+      const { data: newGuest } = await supabase
+        .from("guests")
+        .insert({
+          invite_id: invite.id,
+          first_name: plusOneNames.firstName,
+          last_name: plusOneNames.lastName,
+          is_primary: false,
+          email: null,
+          user_id: null,
+        })
+        .select()
+        .single();
+
+      if (newGuest) {
+        const updatedGuests = [...guests, newGuest as Guest];
+        setGuests(updatedGuests);
+        setSelectedAttendees(new Set([...selectedAttendees, newGuest.id]));
+        setError("");
       }
-      return {
-        ...g,
-        atitlan_attending: false,
-        atitlan_payment_level: "full",
-      };
-    });
-
-    setGuests(updatedGuests);
-    setError("");
-    setCurrentStep(6);
+    } catch (err) {
+      console.error("Error creating guest:", err);
+      setError("Failed to add guest");
+    }
   };
 
   const handleSubmitRSVP = async () => {
@@ -485,7 +432,11 @@ export default function RSVP() {
           accommodationGroup.per_night_cost *
           accommodationGroup.number_of_nights;
         const multiplier =
-          accommodationPayment === "none" ? 0 : accommodationPayment === "half" ? 0.5 : 1;
+          accommodationPayment === "none"
+            ? 0
+            : accommodationPayment === "half"
+              ? 0.5
+              : 1;
 
         await supabase.from("payments").insert({
           invite_id: invite.id,
@@ -497,8 +448,7 @@ export default function RSVP() {
       // Insert atitlan payment if applicable
       if (atitlanAttending && atitlanGuests.size > 0) {
         let totalAtitlan = 0;
-        // You'll need to define atitlan_cost_per_person
-        const atitlanCostPerPerson = 100; // Placeholder - should come from DB
+        const atitlanCostPerPerson = 100;
         for (const guestId of atitlanGuests) {
           const multiplier =
             atitlanPayments[guestId] === "none"
@@ -551,161 +501,180 @@ export default function RSVP() {
       <div className="rsvp-container">
         <h1 className="rsvp-title">RSVP</h1>
 
-        <div className="rsvp-progress">
-          <p className="rsvp-progress-text">{getStepProgressText()}</p>
-          <div className="rsvp-progress-bar">
-            <div
-              className="rsvp-progress-fill"
-              style={{
-                width: `${(currentStep / (invite?.invited_to_atitlan ? 6 : 5)) * 100}%`,
-              }}
-            ></div>
+        {error && <div className="rsvp-error">{error}</div>}
+
+        {/* SECTION 1: Attendance */}
+        <div className="rsvp-section">
+          <h2 className="rsvp-question">Will you be attending?</h2>
+          <div className="rsvp-button-group">
+            <button
+              className={`rsvp-option-button ${attendanceDecision === true ? "active" : ""}`}
+              onClick={() => handleAttendanceDecision(true)}
+              disabled={submitting}
+            >
+              Yes
+            </button>
+            <button
+              className={`rsvp-option-button ${attendanceDecision === false ? "active" : ""}`}
+              onClick={() => handleAttendanceDecision(false)}
+              disabled={submitting}
+            >
+              No
+            </button>
           </div>
         </div>
 
-        {error && <div className="rsvp-error">{error}</div>}
+        {/* SECTION 2: Guest Selection (for couple/plusone) */}
+        {attendanceDecision === true &&
+          invite?.invite_type === "couple" && (
+            <div className="rsvp-section">
+              <h2 className="rsvp-question">Who will be attending?</h2>
+              <div className="rsvp-checkboxes">
+                {guests.map((guest) => (
+                  <label key={guest.id} className="rsvp-checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={selectedAttendees.has(guest.id)}
+                      onChange={(e) =>
+                        handleAttendeesChange(guest.id, e.target.checked)
+                      }
+                      disabled={submitting}
+                    />
+                    <span>
+                      {guest.first_name} {guest.last_name}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
-        {/* STEP 1: Will you be attending? */}
-        {currentStep === 1 && (
-          <div className="rsvp-step">
-            <h2 className="rsvp-question">Will you be attending?</h2>
+        {/* SECTION 2: Plus-One (for plusone invite) */}
+        {attendanceDecision === true && invite?.invite_type === "plusone" && (
+          <div className="rsvp-section">
+            <h2 className="rsvp-question">Will you be bringing a guest?</h2>
             <div className="rsvp-button-group">
               <button
-                className={`rsvp-option-button ${attendanceDecision === true ? "active" : ""}`}
-                onClick={() => handleAttendanceDecision(true)}
-              >
-                Yes
-              </button>
-              <button
-                className={`rsvp-option-button ${attendanceDecision === false ? "active" : ""}`}
-                onClick={() => handleAttendanceDecision(false)}
+                className={`rsvp-option-button ${!showPlusOneForm ? "active" : ""}`}
+                onClick={() => setShowPlusOneForm(false)}
+                disabled={submitting}
               >
                 No
               </button>
+              <button
+                className={`rsvp-option-button ${showPlusOneForm ? "active" : ""}`}
+                onClick={() => setShowPlusOneForm(true)}
+                disabled={submitting}
+              >
+                Yes
+              </button>
             </div>
-            <button
-              className="rsvp-submit-button"
-              disabled={attendanceDecision === null || submitting}
-              onClick={handleContinueFromStep1}
-            >
-              {attendanceDecision === false ? "Submit" : "Continue"}
-            </button>
-          </div>
-        )}
 
-        {/* STEP 2: Who will be attending? */}
-        {currentStep === 2 && (
-          <div className="rsvp-step">
-            {invite?.invite_type === "couple" && (
-              <>
-                <h2 className="rsvp-question">Who will be attending?</h2>
-                <div className="rsvp-checkboxes">
-                  {guests.map((guest) => (
-                    <label key={guest.id} className="rsvp-checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={selectedAttendees.has(guest.id)}
-                        onChange={(e) =>
-                          handleAttendeesChange(guest.id, e.target.checked)
-                        }
-                      />
-                      <span>
-                        {guest.first_name} {guest.last_name}
-                      </span>
-                    </label>
-                  ))}
+            {showPlusOneForm && (
+              <div className="rsvp-form-group">
+                <div>
+                  <label className="rsvp-label">Guest's First Name:</label>
+                  <input
+                    type="text"
+                    className="rsvp-input"
+                    value={plusOneNames.firstName}
+                    onChange={(e) =>
+                      setPlusOneNames({
+                        ...plusOneNames,
+                        firstName: e.target.value,
+                      })
+                    }
+                    disabled={submitting}
+                  />
                 </div>
-              </>
-            )}
-
-            {invite?.invite_type === "plusone" && (
-              <>
-                <h2 className="rsvp-question">
-                  Will you be bringing a guest?
-                </h2>
-                <div className="rsvp-button-group">
-                  <button
-                    className={`rsvp-option-button ${!showPlusOneForm ? "active" : ""}`}
-                    onClick={() => setShowPlusOneForm(false)}
-                  >
-                    No
-                  </button>
-                  <button
-                    className={`rsvp-option-button ${showPlusOneForm ? "active" : ""}`}
-                    onClick={() => setShowPlusOneForm(true)}
-                  >
-                    Yes
-                  </button>
+                <div>
+                  <label className="rsvp-label">Guest's Last Name:</label>
+                  <input
+                    type="text"
+                    className="rsvp-input"
+                    value={plusOneNames.lastName}
+                    onChange={(e) =>
+                      setPlusOneNames({
+                        ...plusOneNames,
+                        lastName: e.target.value,
+                      })
+                    }
+                    disabled={submitting}
+                  />
                 </div>
-
-                {showPlusOneForm && (
-                  <div className="rsvp-form-group">
-                    <div>
-                      <label className="rsvp-label">Guest's First Name:</label>
-                      <input
-                        type="text"
-                        className="rsvp-input"
-                        value={plusOneNames.firstName}
-                        onChange={(e) =>
-                          setPlusOneNames({
-                            ...plusOneNames,
-                            firstName: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="rsvp-label">Guest's Last Name:</label>
-                      <input
-                        type="text"
-                        className="rsvp-input"
-                        value={plusOneNames.lastName}
-                        onChange={(e) =>
-                          setPlusOneNames({
-                            ...plusOneNames,
-                            lastName: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
+                {isGuestSelectionComplete() && (
+                  <button
+                    className="rsvp-add-guest-button"
+                    onClick={handleAddPlusOne}
+                    disabled={submitting}
+                  >
+                    Add Guest
+                  </button>
                 )}
-              </>
+              </div>
             )}
-
-            <button
-              className="rsvp-submit-button"
-              onClick={handleContinueFromStep2}
-              disabled={submitting}
-            >
-              Continue
-            </button>
           </div>
         )}
 
-        {/* STEP 3: Dietary Restrictions */}
-        {currentStep === 3 && (
-          <div className="rsvp-step">
+        {/* SECTION 3: Dietary Restrictions */}
+        {attendanceDecision === true && isGuestSelectionComplete() && (
+          <div className="rsvp-section">
             {getAttendingGuests().map((guest) => (
               <div key={guest.id} className="rsvp-guest-section">
-                <h2 className="rsvp-guest-heading">
+                <h2 className="rsvp-section-subheading">
                   Dietary Restrictions for {guest.first_name}
                 </h2>
-                <div className="rsvp-checkboxes">
-                  {DIETARY_OPTIONS.map((option) => (
-                    <label key={option} className="rsvp-checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={
-                          guest.dietary_restrictions?.includes(option) || false
-                        }
-                        onChange={(e) =>
-                          handleDietaryChange(guest.id, option, e.target.checked)
-                        }
-                      />
-                      <span>{option}</span>
-                    </label>
-                  ))}
+                <div className="rsvp-dietary-grid">
+                  <div className="rsvp-dietary-column">
+                    {DIETARY_LEFT_COLUMN.map((option) => (
+                      <label
+                        key={option}
+                        className="rsvp-checkbox-label"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={
+                            guest.dietary_restrictions?.includes(option) ||
+                            false
+                          }
+                          onChange={(e) =>
+                            handleDietaryChange(
+                              guest.id,
+                              option,
+                              e.target.checked
+                            )
+                          }
+                          disabled={submitting}
+                        />
+                        <span>{option}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="rsvp-dietary-column">
+                    {DIETARY_RIGHT_COLUMN.map((option) => (
+                      <label
+                        key={option}
+                        className="rsvp-checkbox-label"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={
+                            guest.dietary_restrictions?.includes(option) ||
+                            false
+                          }
+                          onChange={(e) =>
+                            handleDietaryChange(
+                              guest.id,
+                              option,
+                              e.target.checked
+                            )
+                          }
+                          disabled={submitting}
+                        />
+                        <span>{option}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
 
                 {guest.dietary_restrictions?.includes("Other") && (
@@ -723,333 +692,336 @@ export default function RSVP() {
                           )
                         )
                       }
+                      disabled={submitting}
                     />
                   </div>
                 )}
               </div>
             ))}
-
-            <button
-              className="rsvp-submit-button"
-              onClick={handleContinueFromStep3}
-              disabled={submitting}
-            >
-              Continue
-            </button>
           </div>
         )}
 
-        {/* STEP 4: Accommodations */}
-        {currentStep === 4 && (
-          <div className="rsvp-step">
-            <h2 className="rsvp-question">
-              Will you be staying at{" "}
-              {accommodationGroup?.display_name || "the accommodation"}?
-            </h2>
+        {/* SECTION 4: Accommodations */}
+        {attendanceDecision === true &&
+          isGuestSelectionComplete() &&
+          isDietaryComplete() && (
+            <div className="rsvp-section">
+              <h2 className="rsvp-question">
+                Will you be staying at{" "}
+                {accommodationGroup?.display_name || "the accommodation"}?
+              </h2>
 
-            {accommodationGroup?.description && (
-              <p className="rsvp-description">{accommodationGroup.description}</p>
-            )}
+              <div className="rsvp-button-group">
+                <button
+                  className={`rsvp-option-button ${accommodationNeeded === false ? "active" : ""}`}
+                  onClick={() => setAccommodationNeeded(false)}
+                  disabled={submitting}
+                >
+                  No
+                </button>
+                <button
+                  className={`rsvp-option-button ${accommodationNeeded === true ? "active" : ""}`}
+                  onClick={() => setAccommodationNeeded(true)}
+                  disabled={submitting}
+                >
+                  Yes
+                </button>
+              </div>
 
-            <div className="rsvp-button-group">
-              <button
-                className={`rsvp-option-button ${accommodationNeeded === false ? "active" : ""}`}
-                onClick={() => setAccommodationNeeded(false)}
-              >
-                No
-              </button>
-              <button
-                className={`rsvp-option-button ${accommodationNeeded === true ? "active" : ""}`}
-                onClick={() => setAccommodationNeeded(true)}
-              >
-                Yes
-              </button>
-            </div>
+              {accommodationNeeded && accommodationGroup && (
+                <>
+                  <div className="rsvp-info-box">
+                    <p>{accommodationGroup.description}</p>
+                    <p>
+                      This is a 'pay what you can' model for the{" "}
+                      {accommodationGroup.number_of_nights}-night stay.{" "}
+                      {accommodationGroup.display_name} has a $
+                      {accommodationGroup.per_night_cost}/night rate, but the
+                      travel fund is available to make traveling to Guatemala
+                      easier.
+                    </p>
+                  </div>
 
-            {accommodationNeeded && accommodationGroup && (
-              <>
-                <div className="rsvp-pricing">
-                  <p>
-                    Cost: ${accommodationGroup.per_night_cost} per night ×{" "}
-                    {accommodationGroup.number_of_nights} nights = $
-                    {accommodationGroup.per_night_cost *
-                      accommodationGroup.number_of_nights}
-                  </p>
-                </div>
-
-                <h3 className="rsvp-subquestion">What can you contribute?</h3>
-                <div className="rsvp-payment-buttons">
-                  {accommodationGroup.payment_options.map((option, idx) => {
-                    const total =
-                      accommodationGroup.per_night_cost *
-                      accommodationGroup.number_of_nights;
-                    const amount = total * option;
-                    const level =
-                      option === 0 ? "none" : option === 0.5 ? "half" : "full";
-                    const label =
-                      option === 0
-                        ? "$0 (100% assistance)"
-                        : option === 0.5
-                          ? `$${(amount).toFixed(0)} (50% assistance)`
-                          : `$${amount.toFixed(0)} (No assistance needed)`;
-
-                    return (
+                  <h3 className="rsvp-subquestion">
+                    What can you contribute?
+                  </h3>
+                  <div className="rsvp-payment-buttons">
+                    {[
+                      { level: "none", label: "$0" },
+                      {
+                        level: "half",
+                        label: `$${(
+                          (accommodationGroup.per_night_cost *
+                            accommodationGroup.number_of_nights) /
+                          2
+                        ).toFixed(0)}`,
+                      },
+                      {
+                        level: "full",
+                        label: `$${(
+                          accommodationGroup.per_night_cost *
+                          accommodationGroup.number_of_nights
+                        ).toFixed(0)}`,
+                      },
+                    ].map(({ level, label }) => (
                       <button
-                        key={idx}
+                        key={level}
                         className={`rsvp-payment-button ${accommodationPayment === level ? "active" : ""}`}
                         onClick={() =>
                           setAccommodationPayment(
                             level as "none" | "half" | "full"
                           )
                         }
+                        disabled={submitting}
                       >
                         {label}
                       </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-
-            <button
-              className="rsvp-submit-button"
-              onClick={handleContinueFromStep4}
-              disabled={submitting}
-            >
-              Continue
-            </button>
-          </div>
-        )}
-
-        {/* STEP 5: Lake Atitlan */}
-        {currentStep === 5 && invite?.invited_to_atitlan && (
-          <div className="rsvp-step">
-            <h2 className="rsvp-question">
-              Will you be attending the post-ceremony celebration at Lake
-              Atitlan?
-            </h2>
-
-            <div className="rsvp-button-group">
-              <button
-                className={`rsvp-option-button ${atitlanAttending === false ? "active" : ""}`}
-                onClick={() => setAtitlanAttending(false)}
-              >
-                No
-              </button>
-              <button
-                className={`rsvp-option-button ${atitlanAttending === true ? "active" : ""}`}
-                onClick={() => setAtitlanAttending(true)}
-              >
-                Yes
-              </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
+          )}
 
-            {atitlanAttending && (
-              <>
-                {getAttendingGuests().length === 1 ? (
-                  <>
-                    <h3 className="rsvp-subquestion">
-                      What can{" "}
-                      {getAttendingGuests()[0]?.first_name || "you"} contribute?
-                    </h3>
-                    <div className="rsvp-payment-buttons">
-                      {[
-                        { level: "none", label: "$0 (100% assistance)" },
-                        { level: "half", label: "$75 (50% assistance)" },
-                        { level: "full", label: "$150 (No assistance needed)" },
-                      ].map(({ level, label }) => (
-                        <button
-                          key={level}
-                          className={`rsvp-payment-button ${atitlanPayments[getAttendingGuests()[0].id] === level ? "active" : ""}`}
-                          onClick={() => {
-                            setAtitlanPayments({
-                              [getAttendingGuests()[0].id]:
-                                level as "none" | "half" | "full",
-                            });
-                          }}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <h3 className="rsvp-subquestion">
-                      Who will be attending Lake Atitlan?
-                    </h3>
-                    <div className="rsvp-checkboxes">
-                      {getAttendingGuests().map((guest) => (
-                        <label key={guest.id} className="rsvp-checkbox-label">
-                          <input
-                            type="checkbox"
-                            checked={atitlanGuests.has(guest.id)}
-                            onChange={(e) => {
-                              const updated = new Set(atitlanGuests);
-                              if (e.target.checked) {
-                                updated.add(guest.id);
-                              } else {
-                                updated.delete(guest.id);
-                              }
-                              setAtitlanGuests(updated);
+        {/* SECTION 5: Lake Atitlan */}
+        {attendanceDecision === true &&
+          isGuestSelectionComplete() &&
+          isDietaryComplete() &&
+          isAccommodationComplete() &&
+          invite?.invited_to_atitlan && (
+            <div className="rsvp-section">
+              <h2 className="rsvp-question">
+                Will you be attending the post-ceremony celebration at Lake
+                Atitlan?
+              </h2>
+
+              <div className="rsvp-button-group">
+                <button
+                  className={`rsvp-option-button ${atitlanAttending === false ? "active" : ""}`}
+                  onClick={() => setAtitlanAttending(false)}
+                  disabled={submitting}
+                >
+                  No
+                </button>
+                <button
+                  className={`rsvp-option-button ${atitlanAttending === true ? "active" : ""}`}
+                  onClick={() => setAtitlanAttending(true)}
+                  disabled={submitting}
+                >
+                  Yes
+                </button>
+              </div>
+
+              {atitlanAttending && (
+                <>
+                  {getAttendingGuests().length === 1 ? (
+                    <>
+                      <h3 className="rsvp-subquestion">
+                        What can{" "}
+                        {getAttendingGuests()[0]?.first_name || "you"}{" "}
+                        contribute?
+                      </h3>
+                      <div className="rsvp-payment-buttons">
+                        {[
+                          { level: "none", label: "$0" },
+                          { level: "half", label: "$75" },
+                          { level: "full", label: "$150" },
+                        ].map(({ level, label }) => (
+                          <button
+                            key={level}
+                            className={`rsvp-payment-button ${atitlanPayments[getAttendingGuests()[0].id] === level ? "active" : ""}`}
+                            onClick={() => {
+                              setAtitlanPayments({
+                                [getAttendingGuests()[0].id]:
+                                  level as "none" | "half" | "full",
+                              });
                             }}
-                          />
-                          <span>
-                            {guest.first_name} {guest.last_name}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
+                            disabled={submitting}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="rsvp-subquestion">
+                        Who will be attending Lake Atitlan?
+                      </h3>
+                      <div className="rsvp-checkboxes">
+                        {getAttendingGuests().map((guest) => (
+                          <label
+                            key={guest.id}
+                            className="rsvp-checkbox-label"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={atitlanGuests.has(guest.id)}
+                              onChange={(e) => {
+                                const updated = new Set(atitlanGuests);
+                                if (e.target.checked) {
+                                  updated.add(guest.id);
+                                } else {
+                                  updated.delete(guest.id);
+                                }
+                                setAtitlanGuests(updated);
+                              }}
+                              disabled={submitting}
+                            />
+                            <span>
+                              {guest.first_name} {guest.last_name}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
 
-                    {atitlanGuests.size > 0 && (
-                      <>
-                        <h3 className="rsvp-subquestion">
-                          What can each guest contribute?
-                        </h3>
-                        {Array.from(atitlanGuests).map((guestId) => {
-                          const guest = getAttendingGuests().find(
-                            (g) => g.id === guestId
-                          );
-                          return (
-                            <div key={guestId} className="rsvp-guest-payment">
-                              <p className="rsvp-guest-name">
-                                {guest?.first_name} {guest?.last_name}
-                              </p>
-                              <div className="rsvp-payment-buttons">
-                                {[
-                                  { level: "none", label: "$0" },
-                                  { level: "half", label: "$75" },
-                                  { level: "full", label: "$150" },
-                                ].map(({ level, label }) => (
-                                  <button
-                                    key={level}
-                                    className={`rsvp-payment-button-sm ${atitlanPayments[guestId] === level ? "active" : ""}`}
-                                    onClick={() =>
-                                      setAtitlanPayments({
-                                        ...atitlanPayments,
-                                        [guestId]:
-                                          level as "none" | "half" | "full",
-                                      })
-                                    }
-                                  >
-                                    {label}
-                                  </button>
-                                ))}
+                      {atitlanGuests.size > 0 && (
+                        <>
+                          <h3 className="rsvp-subquestion">
+                            What can each guest contribute?
+                          </h3>
+                          {Array.from(atitlanGuests).map((guestId) => {
+                            const guest = getAttendingGuests().find(
+                              (g) => g.id === guestId
+                            );
+                            return (
+                              <div
+                                key={guestId}
+                                className="rsvp-guest-payment"
+                              >
+                                <p className="rsvp-guest-name">
+                                  {guest?.first_name} {guest?.last_name}
+                                </p>
+                                <div className="rsvp-payment-buttons-sm">
+                                  {[
+                                    { level: "none", label: "$0" },
+                                    { level: "half", label: "$75" },
+                                    { level: "full", label: "$150" },
+                                  ].map(({ level, label }) => (
+                                    <button
+                                      key={level}
+                                      className={`rsvp-payment-button-sm ${atitlanPayments[guestId] === level ? "active" : ""}`}
+                                      onClick={() =>
+                                        setAtitlanPayments({
+                                          ...atitlanPayments,
+                                          [guestId]:
+                                            level as "none" | "half" | "full",
+                                        })
+                                      }
+                                      disabled={submitting}
+                                    >
+                                      {label}
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })}
-                      </>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-
-            <button
-              className="rsvp-submit-button"
-              onClick={handleContinueFromStep5}
-              disabled={submitting}
-            >
-              Continue
-            </button>
-          </div>
-        )}
-
-        {/* STEP 6: Review & Submit */}
-        {currentStep === 6 && (
-          <div className="rsvp-step">
-            <h2 className="rsvp-question">Review Your RSVP</h2>
-
-            <div className="rsvp-review">
-              <div className="rsvp-review-section">
-                <h3 className="rsvp-review-heading">Attending:</h3>
-                <ul className="rsvp-review-list">
-                  {getAttendingGuests().map((guest) => (
-                    <li key={guest.id}>
-                      {guest.first_name} {guest.last_name}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="rsvp-review-section">
-                <h3 className="rsvp-review-heading">Dietary Restrictions:</h3>
-                <ul className="rsvp-review-list">
-                  {getAttendingGuests().map((guest) => (
-                    <li key={guest.id}>
-                      <strong>{guest.first_name}:</strong>{" "}
-                      {guest.dietary_restrictions?.length
-                        ? guest.dietary_restrictions.join(", ")
-                        : "None"}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {accommodationNeeded && (
-                <div className="rsvp-review-section">
-                  <h3 className="rsvp-review-heading">Accommodations:</h3>
-                  <p>
-                    Contributing:{" "}
-                    {accommodationPayment === "none"
-                      ? "$0"
-                      : accommodationPayment === "half"
-                        ? "$" +
-                          (
-                            (accommodationGroup?.per_night_cost || 0) *
-                            (accommodationGroup?.number_of_nights || 1) *
-                            0.5
-                          ).toFixed(0)
-                        : "$" +
-                          (
-                            (accommodationGroup?.per_night_cost || 0) *
-                            (accommodationGroup?.number_of_nights || 1)
-                          ).toFixed(0)}
-                  </p>
-                </div>
-              )}
-
-              {atitlanAttending && atitlanGuests.size > 0 && (
-                <div className="rsvp-review-section">
-                  <h3 className="rsvp-review-heading">Lake Atitlan:</h3>
-                  <p>
-                    Guests:{" "}
-                    {Array.from(atitlanGuests)
-                      .map(
-                        (id) =>
-                          getAttendingGuests().find((g) => g.id === id)
-                            ?.first_name
-                      )
-                      .join(", ")}
-                  </p>
-                </div>
+                            );
+                          })}
+                        </>
+                      )}
+                    </>
+                  )}
+                </>
               )}
             </div>
+          )}
 
-            <button
-              className="rsvp-submit-button"
-              onClick={handleSubmitRSVP}
-              disabled={submitting}
-            >
-              {submitting ? "Submitting..." : "Submit RSVP"}
-            </button>
+        {/* SECTION 6: Review */}
+        {attendanceDecision === true &&
+          isGuestSelectionComplete() &&
+          isDietaryComplete() &&
+          isAccommodationComplete() &&
+          isAtitlanComplete() && (
+            <div className="rsvp-section">
+              <h2 className="rsvp-question">Review Your RSVP</h2>
 
-            <button
-              className="rsvp-back-button"
-              onClick={() => setCurrentStep(1)}
-              disabled={submitting}
-            >
-              Back to Edit
-            </button>
-          </div>
-        )}
+              <div className="rsvp-review">
+                <div className="rsvp-review-section">
+                  <h3 className="rsvp-review-heading">Attending:</h3>
+                  <ul className="rsvp-review-list">
+                    {getAttendingGuests().map((guest) => (
+                      <li key={guest.id}>
+                        {guest.first_name} {guest.last_name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="rsvp-review-section">
+                  <h3 className="rsvp-review-heading">
+                    Dietary Restrictions:
+                  </h3>
+                  <ul className="rsvp-review-list">
+                    {getAttendingGuests().map((guest) => (
+                      <li key={guest.id}>
+                        <strong>{guest.first_name}:</strong>{" "}
+                        {guest.dietary_restrictions?.length
+                          ? guest.dietary_restrictions.join(", ")
+                          : "None"}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {accommodationNeeded && (
+                  <div className="rsvp-review-section">
+                    <h3 className="rsvp-review-heading">Accommodations:</h3>
+                    <p>
+                      Contributing:{" "}
+                      {accommodationPayment === "none"
+                        ? "$0"
+                        : accommodationPayment === "half"
+                          ? "$" +
+                            (
+                              (accommodationGroup?.per_night_cost || 0) *
+                              (accommodationGroup?.number_of_nights || 1) *
+                              0.5
+                            ).toFixed(0)
+                          : "$" +
+                            (
+                              (accommodationGroup?.per_night_cost || 0) *
+                              (accommodationGroup?.number_of_nights || 1)
+                            ).toFixed(0)}
+                    </p>
+                  </div>
+                )}
+
+                {atitlanAttending && atitlanGuests.size > 0 && (
+                  <div className="rsvp-review-section">
+                    <h3 className="rsvp-review-heading">Lake Atitlan:</h3>
+                    <p>
+                      Guests:{" "}
+                      {Array.from(atitlanGuests)
+                        .map(
+                          (id) =>
+                            getAttendingGuests().find((g) => g.id === id)
+                              ?.first_name
+                        )
+                        .join(", ")}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+        {/* Submit Button - Always visible at bottom */}
+        <div className="rsvp-submit-footer">
+          <button
+            className="rsvp-submit-button"
+            onClick={handleSubmitRSVP}
+            disabled={!formComplete || submitting}
+          >
+            {submitting ? "Submitting..." : "SUBMIT RSVP"}
+          </button>
+        </div>
       </div>
 
       <style>{`
         .rsvp-wrapper {
           padding: 2rem 1rem;
-          min-height: 100%;
+          min-height: 100vh;
+          background-color: #ffffff;
         }
 
         .rsvp-loading {
@@ -1079,8 +1051,9 @@ export default function RSVP() {
           display: flex;
           align-items: center;
           justify-content: center;
-          min-height: 100%;
+          min-height: 100vh;
           padding: 2rem;
+          background-color: #ffffff;
         }
 
         .rsvp-success {
@@ -1101,39 +1074,16 @@ export default function RSVP() {
         .rsvp-container {
           max-width: 800px;
           margin: 0 auto;
+          padding-bottom: 8rem;
         }
 
         .rsvp-title {
           font-size: 3rem;
           font-weight: 400;
-          margin: 0 0 2rem 0;
+          margin: 0 0 3rem 0;
           letter-spacing: 0.02em;
           font-family: "orpheuspro", serif;
-        }
-
-        .rsvp-progress {
-          margin-bottom: 3rem;
-        }
-
-        .rsvp-progress-text {
-          font-size: 0.875rem;
-          color: #666666;
-          margin: 0 0 0.5rem 0;
-          font-family: "orpheuspro", serif;
-        }
-
-        .rsvp-progress-bar {
-          width: 100%;
-          height: 2px;
-          background-color: #e5e5e5;
-          border-radius: 1px;
-          overflow: hidden;
-        }
-
-        .rsvp-progress-fill {
-          height: 100%;
-          background-color: #000000;
-          transition: width 0.3s ease;
+          text-align: center;
         }
 
         .rsvp-error {
@@ -1147,8 +1097,26 @@ export default function RSVP() {
           font-size: 0.95rem;
         }
 
-        .rsvp-step {
+        .rsvp-section {
           margin-bottom: 3rem;
+          padding-bottom: 2rem;
+          border-bottom: 1px solid #e5e5e5;
+          animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .rsvp-section:last-of-type {
+          border-bottom: none;
         }
 
         .rsvp-question {
@@ -1159,12 +1127,21 @@ export default function RSVP() {
           font-family: "orpheuspro", serif;
         }
 
-        .rsvp-subquestion {
+        .rsvp-section-subheading {
           font-size: 1.25rem;
           font-weight: 400;
-          margin: 2rem 0 1rem 0;
+          margin: 0 0 1.5rem 0;
           letter-spacing: 0.01em;
           font-family: "orpheuspro", serif;
+        }
+
+        .rsvp-subquestion {
+          font-size: 1.1rem;
+          font-weight: 400;
+          margin: 2rem 0 1.5rem 0;
+          letter-spacing: 0.01em;
+          font-family: "orpheuspro", serif;
+          color: #333333;
         }
 
         .rsvp-button-group {
@@ -1175,7 +1152,10 @@ export default function RSVP() {
         }
 
         .rsvp-option-button {
-          padding: 0.75rem 2rem;
+          flex: 1;
+          min-width: 180px;
+          max-width: 220px;
+          padding: 0.875rem 2rem;
           background-color: #ffffff;
           color: #000000;
           border: 1px solid #000000;
@@ -1187,7 +1167,7 @@ export default function RSVP() {
           font-weight: 400;
         }
 
-        .rsvp-option-button:hover {
+        .rsvp-option-button:hover:not(:disabled) {
           opacity: 0.7;
         }
 
@@ -1196,11 +1176,16 @@ export default function RSVP() {
           color: #ffffff;
         }
 
+        .rsvp-option-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
         .rsvp-checkboxes {
           margin: 1.5rem 0;
           display: flex;
           flex-direction: column;
-          gap: 0.75rem;
+          gap: 1rem;
         }
 
         .rsvp-checkbox-label {
@@ -1217,6 +1202,11 @@ export default function RSVP() {
           height: 18px;
           cursor: pointer;
           accent-color: #000000;
+        }
+
+        .rsvp-checkbox-label input:disabled {
+          cursor: not-allowed;
+          opacity: 0.5;
         }
 
         .rsvp-form-group {
@@ -1243,44 +1233,82 @@ export default function RSVP() {
           background-color: #ffffff;
         }
 
+        .rsvp-input:disabled,
+        .rsvp-textarea:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
         .rsvp-textarea {
           resize: vertical;
           min-height: 100px;
         }
 
+        .rsvp-add-guest-button {
+          padding: 0.75rem 2rem;
+          background-color: #000000;
+          color: #ffffff;
+          border: 1px solid #000000;
+          font-size: 0.95rem;
+          font-family: "orpheuspro", serif;
+          cursor: pointer;
+          transition: opacity 0.2s ease;
+          letter-spacing: 0.02em;
+          font-weight: 400;
+          margin-top: 0.5rem;
+        }
+
+        .rsvp-add-guest-button:hover:not(:disabled) {
+          opacity: 0.8;
+        }
+
+        .rsvp-add-guest-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
         .rsvp-guest-section {
-          margin-bottom: 2rem;
+          margin: 2rem 0;
           padding: 1.5rem;
           background-color: #f9f9f9;
           border: 1px solid #e5e5e5;
         }
 
-        .rsvp-guest-heading {
-          font-size: 1.25rem;
-          font-weight: 400;
-          margin: 0 0 1rem 0;
-          font-family: "orpheuspro", serif;
-        }
-
-        .rsvp-description {
-          font-size: 0.95rem;
-          color: #666666;
-          margin: 1rem 0 1.5rem 0;
-          line-height: 1.6;
-          font-family: "orpheuspro", serif;
-        }
-
-        .rsvp-pricing {
-          padding: 1rem;
-          background-color: #f5f5f5;
-          border-left: 2px solid #000000;
+        .rsvp-dietary-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 2rem;
           margin: 1.5rem 0;
-          font-family: "orpheuspro", serif;
         }
 
-        .rsvp-pricing p {
-          margin: 0;
-          font-size: 1rem;
+        .rsvp-dietary-column {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .rsvp-info-box {
+          margin: 1.5rem 0;
+          padding: 1.5rem;
+          background-color: #fafafa;
+          border: 1px solid #e5e5e5;
+          border-radius: 2px;
+          font-family: "orpheuspro", serif;
+          font-size: 0.95rem;
+          line-height: 1.6;
+          color: #333333;
+        }
+
+        .rsvp-info-box p {
+          margin: 0.75rem 0;
+        }
+
+        .rsvp-info-box p:first-child {
+          margin-top: 0;
+        }
+
+        .rsvp-info-box p:last-child {
+          margin-bottom: 0;
         }
 
         .rsvp-payment-buttons {
@@ -1288,6 +1316,13 @@ export default function RSVP() {
           flex-direction: column;
           gap: 0.75rem;
           margin: 1.5rem 0;
+        }
+
+        .rsvp-payment-buttons-sm {
+          display: flex;
+          flex-direction: row;
+          gap: 0.5rem;
+          margin: 1rem 0;
         }
 
         .rsvp-payment-button,
@@ -1306,12 +1341,14 @@ export default function RSVP() {
         }
 
         .rsvp-payment-button-sm {
-          padding: 0.5rem 1rem;
+          flex: 1;
+          padding: 0.6rem 1rem;
           font-size: 0.85rem;
+          text-align: center;
         }
 
-        .rsvp-payment-button:hover,
-        .rsvp-payment-button-sm:hover {
+        .rsvp-payment-button:hover:not(:disabled),
+        .rsvp-payment-button-sm:hover:not(:disabled) {
           opacity: 0.7;
         }
 
@@ -1321,18 +1358,25 @@ export default function RSVP() {
           color: #ffffff;
         }
 
+        .rsvp-payment-button:disabled,
+        .rsvp-payment-button-sm:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
         .rsvp-guest-payment {
           margin: 1.5rem 0;
           padding: 1rem;
-          background-color: #f5f5f5;
+          background-color: #ffffff;
           border: 1px solid #e5e5e5;
         }
 
         .rsvp-guest-name {
-          font-size: 1rem;
+          font-size: 0.95rem;
           font-weight: 500;
           margin: 0 0 0.75rem 0;
           font-family: "orpheuspro", serif;
+          color: #333333;
         }
 
         .rsvp-review {
@@ -1355,6 +1399,7 @@ export default function RSVP() {
           font-weight: 500;
           margin: 0 0 0.75rem 0;
           font-family: "orpheuspro", serif;
+          color: #000000;
         }
 
         .rsvp-review-list {
@@ -1370,8 +1415,22 @@ export default function RSVP() {
           color: #333333;
         }
 
+        .rsvp-submit-footer {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background-color: #ffffff;
+          border-top: 1px solid #e5e5e5;
+          padding: 1.5rem;
+          z-index: 100;
+        }
+
         .rsvp-submit-button {
           width: 100%;
+          max-width: 800px;
+          margin: 0 auto;
+          display: block;
           padding: 1rem;
           background-color: #000000;
           color: #ffffff;
@@ -1382,7 +1441,6 @@ export default function RSVP() {
           transition: opacity 0.2s ease;
           letter-spacing: 0.05em;
           font-weight: 400;
-          margin-top: 2rem;
         }
 
         .rsvp-submit-button:hover:not(:disabled) {
@@ -1394,30 +1452,6 @@ export default function RSVP() {
           cursor: not-allowed;
         }
 
-        .rsvp-back-button {
-          width: 100%;
-          padding: 0.75rem;
-          background-color: #ffffff;
-          color: #000000;
-          border: 1px solid #000000;
-          font-size: 0.95rem;
-          font-family: "orpheuspro", serif;
-          cursor: pointer;
-          transition: opacity 0.2s ease;
-          letter-spacing: 0.02em;
-          font-weight: 400;
-          margin-top: 1rem;
-        }
-
-        .rsvp-back-button:hover:not(:disabled) {
-          opacity: 0.7;
-        }
-
-        .rsvp-back-button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
         @media (max-width: 768px) {
           .rsvp-wrapper {
             padding: 1rem 0.75rem;
@@ -1425,10 +1459,15 @@ export default function RSVP() {
 
           .rsvp-title {
             font-size: 2rem;
+            margin-bottom: 2rem;
           }
 
           .rsvp-question {
             font-size: 1.25rem;
+          }
+
+          .rsvp-section-subheading {
+            font-size: 1.1rem;
           }
 
           .rsvp-button-group {
@@ -1437,11 +1476,26 @@ export default function RSVP() {
           }
 
           .rsvp-option-button {
-            padding: 0.75rem 1.5rem;
+            min-width: unset;
+            max-width: unset;
+            flex: 1;
           }
 
-          .rsvp-payment-buttons {
+          .rsvp-dietary-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+          }
+
+          .rsvp-payment-buttons-sm {
             flex-direction: column;
+          }
+
+          .rsvp-container {
+            padding-bottom: 10rem;
+          }
+
+          .rsvp-submit-footer {
+            padding: 1rem 0.75rem;
           }
         }
       `}</style>
