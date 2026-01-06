@@ -282,6 +282,106 @@ export default function Dashboard() {
     return payments.reduce((sum, p) => sum + (p.amount_paid || 0), 0);
   };
 
+  const handleRsvpDietaryChange = (
+    guestId: string,
+    option: string,
+    checked: boolean
+  ) => {
+    setRsvpFormState((prev) => {
+      const current = prev[guestId] || rsvpResponses[guestId];
+      if (!current) return prev;
+
+      const restrictions = [...(current.dietary_restrictions || [])];
+
+      if (option === "None") {
+        return {
+          ...prev,
+          [guestId]: {
+            ...current,
+            dietary_restrictions: checked ? ["__none__"] : [],
+          },
+        };
+      } else if (checked) {
+        const updated = restrictions.filter((r) => r !== "__none__");
+        if (!updated.includes(option)) {
+          updated.push(option);
+        }
+        return {
+          ...prev,
+          [guestId]: {
+            ...current,
+            dietary_restrictions: updated,
+          },
+        };
+      } else {
+        const updated = restrictions.filter((r) => r !== option);
+        return {
+          ...prev,
+          [guestId]: {
+            ...current,
+            dietary_restrictions: updated,
+          },
+        };
+      }
+    });
+  };
+
+  const isDietaryOptionSelected = (
+    restrictions: string[] | undefined,
+    option: string
+  ): boolean => {
+    if (!restrictions) return false;
+    if (option === "None") {
+      return restrictions.includes("__none__");
+    }
+    return restrictions.includes(option);
+  };
+
+  const cleanDietaryRestrictions = (restrictions: string[]): string[] => {
+    if (!restrictions || restrictions.length === 0) return [];
+    return restrictions
+      .filter((r) => r !== "None" && r !== "__none__")
+      .map((r) => r.toLowerCase().replace(/\s+/g, "_"));
+  };
+
+  const saveRsvpUpdate = async () => {
+    setSavingRsvp(true);
+    try {
+      for (const guest of userData!.allGuests) {
+        const formData = rsvpFormState[guest.id];
+        if (!formData) continue;
+
+        const cleanedDietary = cleanDietaryRestrictions(
+          formData.dietary_restrictions || []
+        );
+
+        const { error } = await supabase
+          .from("rsvp_responses")
+          .update({
+            attending: formData.attending,
+            dietary_restrictions: cleanedDietary,
+            dietary_notes: formData.dietary_notes || null,
+            accommodation_needed: formData.accommodation_needed,
+            accommodation_payment_level: formData.accommodation_payment_level || null,
+            atitlan_attending: formData.atitlan_attending,
+            atitlan_payment_level: formData.atitlan_payment_level || null,
+          })
+          .eq("guest_id", guest.id);
+
+        if (error) throw error;
+      }
+
+      setRsvpResponses(rsvpFormState);
+      setShowRsvpForm(false);
+      alert("RSVP updated successfully!");
+    } catch (err) {
+      console.error("Error saving RSVP:", err);
+      alert("Failed to update RSVP. Please try again.");
+    } finally {
+      setSavingRsvp(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="dashboard-wrapper">
