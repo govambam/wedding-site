@@ -736,10 +736,10 @@ export default function RSVP() {
                       >
                         <input
                           type="checkbox"
-                          checked={
-                            guest.dietary_restrictions?.includes(option) ||
-                            false
-                          }
+                          checked={isDietaryOptionSelected(
+                            guest.dietary_restrictions,
+                            option
+                          )}
                           onChange={(e) =>
                             handleDietaryChange(
                               guest.id,
@@ -761,10 +761,10 @@ export default function RSVP() {
                       >
                         <input
                           type="checkbox"
-                          checked={
-                            guest.dietary_restrictions?.includes(option) ||
-                            false
-                          }
+                          checked={isDietaryOptionSelected(
+                            guest.dietary_restrictions,
+                            option
+                          )}
                           onChange={(e) =>
                             handleDietaryChange(
                               guest.id,
