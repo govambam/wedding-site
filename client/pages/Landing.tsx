@@ -24,31 +24,35 @@ export default function Landing() {
       if (data.session) {
         // User is logged in, fetch their RSVP status
         try {
-          const { data: guest, error: guestError } = await supabase
+          const userId = data.session.user.id;
+
+          // Step 1: Get current guest record
+          const { data: currentGuest, error: guestError } = await supabase
             .from("guests")
-            .select(
-              `
-              *,
-              invites!inner(rsvp_status)
-            `
-            )
-            .eq("user_id", data.session.user.id)
+            .select("*")
+            .eq("user_id", userId)
             .single();
 
-          if (guestError) {
-            console.error("Guest fetch error:", guestError);
-            // Redirect to wedding as fallback
-            navigate("/wedding", { replace: true });
-            return;
-          }
+          if (guestError) throw guestError;
+          if (!currentGuest) throw new Error("Guest not found");
 
-          if (guest?.invites?.rsvp_status === "pending") {
+          // Step 2: Get the invite
+          const { data: invite, error: inviteError } = await supabase
+            .from("invites")
+            .select("*")
+            .eq("id", currentGuest.invite_id)
+            .single();
+
+          if (inviteError) throw inviteError;
+
+          // Redirect based on RSVP status
+          if (invite?.rsvp_status === "pending") {
             navigate("/rsvp", { replace: true });
           } else {
             navigate("/wedding", { replace: true });
           }
-        } catch (fetchErr) {
-          console.error("Error fetching guest data:", fetchErr);
+        } catch (fetchErr: any) {
+          console.error("Error fetching guest data:", fetchErr.message);
           // Fallback to wedding page
           navigate("/wedding", { replace: true });
         }
