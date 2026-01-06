@@ -1363,28 +1363,16 @@ export default function Dashboard() {
           cursor: not-allowed;
         }
 
-        .dashboard-button-secondary {
-          padding: 0.75rem 2rem;
-          background-color: #f5f5f5;
+        .dashboard-button-white {
+          background-color: #ffffff;
           color: #000000;
-          border: 1px solid #e5e5e5;
-          border-radius: 4px;
-          font-size: 0.95rem;
-          font-family: "orpheuspro", serif;
-          cursor: pointer;
-          letter-spacing: 0.02em;
-          transition: all 0.2s ease;
+          border: 1px solid #000000;
           margin-left: 1rem;
         }
 
-        .dashboard-button-secondary:hover:not(:disabled) {
-          background-color: #eeeeee;
-          border-color: #cccccc;
-        }
-
-        .dashboard-button-secondary:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
+        .dashboard-button-white:hover:not(:disabled) {
+          background-color: #f5f5f5;
+          border-color: #000000;
         }
 
         .dashboard-rsvp-form-wrapper {
