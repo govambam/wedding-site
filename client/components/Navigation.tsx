@@ -89,8 +89,10 @@ export default function Navigation() {
 
   const fetchGuestData = async () => {
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !sessionData.session) {
+        console.error("Session error:", sessionError);
         setLoading(false);
         return;
       }
@@ -111,6 +113,7 @@ export default function Navigation() {
 
       if (error) {
         console.error("Error fetching guest data:", error);
+        // Still set loading to false even if there's an error
       } else if (guest) {
         setCurrentGuest(guest as CurrentGuest);
       }
