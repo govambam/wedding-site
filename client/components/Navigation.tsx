@@ -74,69 +74,14 @@ export default function Navigation() {
   return (
     <nav className="nav-container">
       <div className="nav-content">
-        <div className="nav-logo">
-          <button onClick={() => navigate("/")} className="nav-logo-button">
-            Josie & Ivan
-          </button>
-        </div>
+        <div className="nav-header">
+          <div className="nav-logo">
+            <button onClick={() => navigate("/")} className="nav-logo-button">
+              Josie & Ivan
+            </button>
+          </div>
 
-        {!isLoading && isAuthenticated && userData && (
-          <>
-            <div className="nav-links">
-              <a
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate("/wedding");
-                }}
-                className="nav-link"
-              >
-                WEDDING
-              </a>
-              <a
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate("/travel");
-                }}
-                className="nav-link"
-              >
-                TRAVEL
-              </a>
-              <a
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate("/accommodations");
-                }}
-                className="nav-link"
-              >
-                ACCOMMODATIONS
-              </a>
-              <a
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate("/registry");
-                }}
-                className="nav-link"
-              >
-                REGISTRY
-              </a>
-              {userData.invite?.invited_to_atitlan && (
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate("/atitlan");
-                  }}
-                  className="nav-link"
-                >
-                  LAKE ATITLAN
-                </a>
-              )}
-            </div>
-
+          {!isLoading && isAuthenticated && userData && (
             <div className="nav-user-menu" ref={dropdownRef}>
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
@@ -198,40 +143,113 @@ export default function Navigation() {
                 </div>
               )}
             </div>
-          </>
+          )}
+        </div>
+
+        {!isLoading && isAuthenticated && userData && (
+          <div className="nav-links-container">
+            <div className="nav-links">
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/wedding");
+                }}
+                className="nav-link"
+              >
+                WEDDING
+              </a>
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/travel");
+                }}
+                className="nav-link"
+              >
+                TRAVEL
+              </a>
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/accommodations");
+                }}
+                className="nav-link"
+              >
+                ACCOMMODATIONS
+              </a>
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/registry");
+                }}
+                className="nav-link"
+              >
+                REGISTRY
+              </a>
+              {userData.invite?.invited_to_atitlan && (
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate("/atitlan");
+                  }}
+                  className="nav-link"
+                >
+                  LAKE ATITLAN
+                </a>
+              )}
+            </div>
+          </div>
         )}
 
         {!isLoading && isAuthenticated && !userData && (
-          <div className="nav-user-menu" ref={dropdownRef}>
-            <button
-              onClick={() => setShowDropdown(!showDropdown)}
-              className="nav-user-button"
-            >
-              Account
-              <span className="nav-dropdown-arrow">▼</span>
-            </button>
+          <div className="nav-header">
+            <div className="nav-logo">
+              <button onClick={() => navigate("/")} className="nav-logo-button">
+                Josie & Ivan
+              </button>
+            </div>
+            <div className="nav-user-menu" ref={dropdownRef}>
+              <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="nav-user-button"
+              >
+                Account
+                <span className="nav-dropdown-arrow">▼</span>
+              </button>
 
-            {showDropdown && (
-              <div className="nav-dropdown">
-                <button
-                  onClick={handleLogout}
-                  className="nav-dropdown-item nav-dropdown-logout"
-                >
-                  Logout
-                </button>
-              </div>
-            )}
+              {showDropdown && (
+                <div className="nav-dropdown">
+                  <button
+                    onClick={handleLogout}
+                    className="nav-dropdown-item nav-dropdown-logout"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {!isLoading && !isAuthenticated && (
-          <div className="nav-login">
-            <button
-              onClick={() => navigate("/login")}
-              className="nav-login-button"
-            >
-              LOGIN
-            </button>
+          <div className="nav-header">
+            <div className="nav-logo">
+              <button onClick={() => navigate("/")} className="nav-logo-button">
+                Josie & Ivan
+              </button>
+            </div>
+            <div className="nav-login">
+              <button
+                onClick={() => navigate("/login")}
+                className="nav-login-button"
+              >
+                LOGIN
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -248,11 +266,14 @@ export default function Navigation() {
         .nav-content {
           max-width: 1200px;
           margin: 0 auto;
+          font-family: "orpheuspro", serif;
+        }
+
+        .nav-header {
           padding: 1.5rem 2rem;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          font-family: "orpheuspro", serif;
         }
 
         .nav-logo {
@@ -276,12 +297,24 @@ export default function Navigation() {
           opacity: 0.7;
         }
 
+        .nav-links-container {
+          width: 100%;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none; /* Firefox */
+          -ms-overflow-style: none; /* IE/Edge */
+        }
+
+        .nav-links-container::-webkit-scrollbar {
+          display: none; /* Chrome/Safari */
+        }
+
         .nav-links {
           display: flex;
           gap: 3rem;
-          flex: 1;
           justify-content: center;
           align-items: center;
+          padding: 0 2rem 1.5rem 2rem;
         }
 
         .nav-link {
@@ -399,7 +432,7 @@ export default function Navigation() {
         }
 
         @media (max-width: 768px) {
-          .nav-content {
+          .nav-header {
             padding: 1rem 1.5rem;
           }
 
@@ -407,8 +440,20 @@ export default function Navigation() {
             font-size: 1.25rem;
           }
 
+          .nav-links-container {
+            border-top: 1px solid #e5e5e5;
+          }
+
           .nav-links {
-            display: none;
+            justify-content: flex-start;
+            gap: 2rem;
+            padding: 1rem 1.5rem;
+            min-width: min-content;
+          }
+
+          .nav-link {
+            white-space: nowrap;
+            font-size: 0.8rem;
           }
 
           .nav-user-button {
