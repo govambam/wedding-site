@@ -408,7 +408,10 @@ export default function Landing() {
         and RSVP.
       </p>
 
-      <button onClick={() => navigate("/login")} className="landing-login-button">
+      <button
+        onClick={() => navigate("/login")}
+        className="landing-login-button"
+      >
         LOG IN
       </button>
 

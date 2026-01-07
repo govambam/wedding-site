@@ -47,7 +47,7 @@ export default function Navigation() {
             setUserData(null);
           }
         }
-      }
+      },
     );
 
     return () => {
@@ -127,7 +127,9 @@ export default function Navigation() {
       if (guestError) {
         console.error("Guest fetch error:", guestError);
         if (guestError.message.includes("infinite recursion")) {
-          console.warn("RLS policy infinite recursion detected. This is a Supabase configuration issue.");
+          console.warn(
+            "RLS policy infinite recursion detected. This is a Supabase configuration issue.",
+          );
         }
         setUserData(null);
         setLoading(false);
@@ -154,7 +156,9 @@ export default function Navigation() {
       if (inviteError) {
         console.error("Invite fetch error:", inviteError);
         if (inviteError.message.includes("infinite recursion")) {
-          console.warn("RLS policy infinite recursion on invites table. Check Supabase policies for circular dependencies with admin_users.");
+          console.warn(
+            "RLS policy infinite recursion on invites table. Check Supabase policies for circular dependencies with admin_users.",
+          );
         }
         setUserData(null);
         setLoading(false);
@@ -169,7 +173,10 @@ export default function Navigation() {
       }
 
       // Step 3: Get all guests in invite
-      console.log("Step 3: Fetching all guests for invite_id:", guest.invite_id);
+      console.log(
+        "Step 3: Fetching all guests for invite_id:",
+        guest.invite_id,
+      );
       const { data: allGuests, error: allGuestsError } = await supabase
         .from("guests")
         .select("*")
@@ -204,8 +211,12 @@ export default function Navigation() {
     } catch (error: any) {
       console.error("Unexpected error fetching user data:", error);
       if (error.message?.includes("infinite recursion")) {
-        console.warn("⚠️ RLS Policy Issue: Fix the infinite recursion in your Supabase RLS policies");
-        console.warn("Check that the 'invites' table policy does not reference 'admin_users'");
+        console.warn(
+          "⚠️ RLS Policy Issue: Fix the infinite recursion in your Supabase RLS policies",
+        );
+        console.warn(
+          "Check that the 'invites' table policy does not reference 'admin_users'",
+        );
       }
       setUserData(null);
     } finally {
@@ -220,7 +231,7 @@ export default function Navigation() {
 
     // Filter guests with first_name (excludes +1s not yet added)
     const namedGuests = userData.allGuests.filter(
-      (g) => g.first_name && g.last_name
+      (g) => g.first_name && g.last_name,
     );
 
     console.log("Named guests for display:", namedGuests);
@@ -243,13 +254,10 @@ export default function Navigation() {
     try {
       // Try to sign out, but don't wait too long
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Signout timeout")), 3000)
+        setTimeout(() => reject(new Error("Signout timeout")), 3000),
       );
 
-      await Promise.race([
-        supabase.auth.signOut(),
-        timeoutPromise
-      ]);
+      await Promise.race([supabase.auth.signOut(), timeoutPromise]);
     } catch (error) {
       console.error("Error during signout:", error);
       // Continue logout even if signOut fails

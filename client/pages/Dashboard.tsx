@@ -155,7 +155,10 @@ export default function Dashboard() {
       const { data: rsvpData } = await supabase
         .from("rsvp_responses")
         .select("*")
-        .in("guest_id", allGuests.map((g) => g.id));
+        .in(
+          "guest_id",
+          allGuests.map((g) => g.id),
+        );
 
       if (rsvpData) {
         const rsvpMap: Record<string, RsvpResponse> = {};
@@ -170,7 +173,10 @@ export default function Dashboard() {
       const { data: travelData } = await supabase
         .from("travel_details")
         .select("*")
-        .in("guest_id", allGuests.map((g) => g.id));
+        .in(
+          "guest_id",
+          allGuests.map((g) => g.id),
+        );
 
       if (travelData) {
         const travelMap: Record<string, TravelDetails> = {};
@@ -225,7 +231,7 @@ export default function Dashboard() {
   const handleTravelInputChange = (
     guestId: string,
     field: keyof TravelDetails,
-    value: any
+    value: any,
   ) => {
     setTravelFormState((prev) => ({
       ...prev,
@@ -255,7 +261,7 @@ export default function Dashboard() {
           needs_transfer: data.needs_transfer,
           notes: data.notes || null,
         },
-        { onConflict: "guest_id" }
+        { onConflict: "guest_id" },
       );
 
       if (error) throw error;
@@ -285,7 +291,7 @@ export default function Dashboard() {
   const handleRsvpDietaryChange = (
     guestId: string,
     option: string,
-    checked: boolean
+    checked: boolean,
   ) => {
     setRsvpFormState((prev) => {
       const current = prev[guestId] || rsvpResponses[guestId];
@@ -328,7 +334,7 @@ export default function Dashboard() {
 
   const isDietaryOptionSelected = (
     restrictions: string[] | undefined,
-    option: string
+    option: string,
   ): boolean => {
     if (!restrictions) return false;
     if (option === "None") {
@@ -352,7 +358,7 @@ export default function Dashboard() {
         if (!formData) continue;
 
         const cleanedDietary = cleanDietaryRestrictions(
-          formData.dietary_restrictions || []
+          formData.dietary_restrictions || [],
         );
 
         const { error } = await supabase
@@ -362,7 +368,8 @@ export default function Dashboard() {
             dietary_restrictions: cleanedDietary,
             dietary_notes: formData.dietary_notes || null,
             accommodation_needed: formData.accommodation_needed,
-            accommodation_payment_level: formData.accommodation_payment_level || null,
+            accommodation_payment_level:
+              formData.accommodation_payment_level || null,
             atitlan_attending: formData.atitlan_attending,
             atitlan_payment_level: formData.atitlan_payment_level || null,
           })
@@ -431,9 +438,7 @@ export default function Dashboard() {
 
             {userData.allGuests.length > attendingGuests.length && (
               <>
-                <h3 className="dashboard-subsection-heading">
-                  Not Attending
-                </h3>
+                <h3 className="dashboard-subsection-heading">Not Attending</h3>
                 <ul className="dashboard-guest-list">
                   {userData.allGuests
                     .filter((g) => !rsvpResponses[g.id]?.attending)
@@ -459,26 +464,27 @@ export default function Dashboard() {
               );
             })}
 
-            {attendingGuests.some((g) => rsvpResponses[g.id]?.accommodation_needed) && (
+            {attendingGuests.some(
+              (g) => rsvpResponses[g.id]?.accommodation_needed,
+            ) && (
               <>
                 <h3 className="dashboard-subsection-heading">Accommodations</h3>
                 <div className="dashboard-info-text">
                   Yes, you've arranged accommodations.{" "}
                   {attendingGuests.find(
-                    (g) => rsvpResponses[g.id]?.accommodation_payment_level
+                    (g) => rsvpResponses[g.id]?.accommodation_payment_level,
                   ) &&
                     `Contributing: $${
                       attendingGuests
                         .map(
                           (g) =>
-                            rsvpResponses[g.id]?.accommodation_payment_level
+                            rsvpResponses[g.id]?.accommodation_payment_level,
                         )
                         .filter(Boolean).length > 0
-                        ? (
-                            rsvpResponses[attendingGuests[0].id]
-                              ?.accommodation_payment_level === "full"
-                              ? 200
-                              : 100
+                        ? (rsvpResponses[attendingGuests[0].id]
+                            ?.accommodation_payment_level === "full"
+                            ? 200
+                            : 100
                           ).toFixed(0)
                         : "TBD"
                     }`}
@@ -488,12 +494,10 @@ export default function Dashboard() {
 
             {userData.invite.invited_to_atitlan &&
               attendingGuests.some(
-                (g) => rsvpResponses[g.id]?.atitlan_attending
+                (g) => rsvpResponses[g.id]?.atitlan_attending,
               ) && (
                 <>
-                  <h3 className="dashboard-subsection-heading">
-                    Lake Atitlan
-                  </h3>
+                  <h3 className="dashboard-subsection-heading">Lake Atitlan</h3>
                   <div className="dashboard-info-text">
                     You're attending the Lake Atitlan celebration!
                   </div>
@@ -565,13 +569,13 @@ export default function Dashboard() {
                                 type="checkbox"
                                 checked={isDietaryOptionSelected(
                                   formData.dietary_restrictions,
-                                  option
+                                  option,
                                 )}
                                 onChange={(e) =>
                                   handleRsvpDietaryChange(
                                     guest.id,
                                     option,
-                                    e.target.checked
+                                    e.target.checked,
                                   )
                                 }
                                 disabled={savingRsvp}
@@ -631,11 +635,10 @@ export default function Dashboard() {
                                         ...prev,
                                         [guest.id]: {
                                           ...formData,
-                                          accommodation_payment_level:
-                                            level as
-                                              | "none"
-                                              | "half"
-                                              | "full",
+                                          accommodation_payment_level: level as
+                                            | "none"
+                                            | "half"
+                                            | "full",
                                         },
                                       }))
                                     }
@@ -701,11 +704,10 @@ export default function Dashboard() {
                                             ...prev,
                                             [guest.id]: {
                                               ...formData,
-                                              atitlan_payment_level:
-                                                level as
-                                                  | "none"
-                                                  | "half"
-                                                  | "full",
+                                              atitlan_payment_level: level as
+                                                | "none"
+                                                | "half"
+                                                | "full",
                                             },
                                           }))
                                         }
@@ -771,7 +773,7 @@ export default function Dashboard() {
                         handleTravelInputChange(
                           guest.id,
                           "arrival_date",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                     />
@@ -787,7 +789,7 @@ export default function Dashboard() {
                         handleTravelInputChange(
                           guest.id,
                           "arrival_time",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                     />
@@ -798,14 +800,12 @@ export default function Dashboard() {
                     <input
                       type="text"
                       className="dashboard-input"
-                      value={
-                        travelFormState[guest.id]?.arrival_airline || ""
-                      }
+                      value={travelFormState[guest.id]?.arrival_airline || ""}
                       onChange={(e) =>
                         handleTravelInputChange(
                           guest.id,
                           "arrival_airline",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       placeholder="e.g. United Airlines"
@@ -824,7 +824,7 @@ export default function Dashboard() {
                         handleTravelInputChange(
                           guest.id,
                           "arrival_flight_number",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       placeholder="e.g. UA123"
@@ -843,7 +843,7 @@ export default function Dashboard() {
                         handleTravelInputChange(
                           guest.id,
                           "departure_date",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                     />
@@ -859,7 +859,7 @@ export default function Dashboard() {
                         handleTravelInputChange(
                           guest.id,
                           "departure_time",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                     />
@@ -870,14 +870,12 @@ export default function Dashboard() {
                     <input
                       type="text"
                       className="dashboard-input"
-                      value={
-                        travelFormState[guest.id]?.departure_airline || ""
-                      }
+                      value={travelFormState[guest.id]?.departure_airline || ""}
                       onChange={(e) =>
                         handleTravelInputChange(
                           guest.id,
                           "departure_airline",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       placeholder="e.g. United Airlines"
@@ -890,14 +888,13 @@ export default function Dashboard() {
                       type="text"
                       className="dashboard-input"
                       value={
-                        travelFormState[guest.id]
-                          ?.departure_flight_number || ""
+                        travelFormState[guest.id]?.departure_flight_number || ""
                       }
                       onChange={(e) =>
                         handleTravelInputChange(
                           guest.id,
                           "departure_flight_number",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       placeholder="e.g. UA456"
@@ -910,14 +907,12 @@ export default function Dashboard() {
                 <label className="dashboard-checkbox-label">
                   <input
                     type="checkbox"
-                    checked={
-                      travelFormState[guest.id]?.needs_transfer || false
-                    }
+                    checked={travelFormState[guest.id]?.needs_transfer || false}
                     onChange={(e) =>
                       handleTravelInputChange(
                         guest.id,
                         "needs_transfer",
-                        e.target.checked
+                        e.target.checked,
                       )
                     }
                   />
@@ -962,9 +957,7 @@ export default function Dashboard() {
 
         {/* SECTION 3: Payments & Contributions */}
         <div className="dashboard-card">
-          <h2 className="dashboard-card-heading">
-            Financial Contributions
-          </h2>
+          <h2 className="dashboard-card-heading">Financial Contributions</h2>
 
           {payments.length > 0 ? (
             <>

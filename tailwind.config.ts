@@ -59,7 +59,7 @@ export default {
         },
       },
       fontFamily: {
-        serif: ['"orpheuspro"', 'serif'],
+        serif: ['"orpheuspro"', "serif"],
       },
       borderRadius: {
         lg: "var(--radius)",

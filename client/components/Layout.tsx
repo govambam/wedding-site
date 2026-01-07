@@ -8,9 +8,7 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="layout-wrapper">
       <Navigation />
-      <main className="layout-main">
-        {children}
-      </main>
+      <main className="layout-main">{children}</main>
     </div>
   );
 }
@@ -31,6 +29,6 @@ const layoutStyles = `
 `;
 
 // Inject styles
-const style = document.createElement('style');
+const style = document.createElement("style");
 style.textContent = layoutStyles;
 document.head.appendChild(style);

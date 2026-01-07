@@ -71,23 +71,25 @@ export default function RSVP() {
   // Form state
   const [guests, setGuests] = useState<Guest[]>([]);
   const [attendanceDecision, setAttendanceDecision] = useState<boolean | null>(
-    null
+    null,
   );
   const [selectedAttendees, setSelectedAttendees] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [plusOneNames, setPlusOneNames] = useState({
     firstName: "",
     lastName: "",
   });
   const [showPlusOneForm, setShowPlusOneForm] = useState(false);
-  const [accommodationNeeded, setAccommodationNeeded] = useState<boolean | null>(
-    null
-  );
+  const [accommodationNeeded, setAccommodationNeeded] = useState<
+    boolean | null
+  >(null);
   const [accommodationPayment, setAccommodationPayment] = useState<
     "none" | "half" | "full" | null
   >(null);
-  const [atitlanAttending, setAtitlanAttending] = useState<boolean | null>(null);
+  const [atitlanAttending, setAtitlanAttending] = useState<boolean | null>(
+    null,
+  );
   const [atitlanGuests, setAtitlanGuests] = useState<Set<string>>(new Set());
   const [atitlanPayments, setAtitlanPayments] = useState<
     Record<string, "none" | "half" | "full">
@@ -169,7 +171,7 @@ export default function RSVP() {
           accommodation_payment_level: "full",
           atitlan_attending: false,
           atitlan_payment_level: "full",
-        }))
+        })),
       );
 
       // Initialize selected attendees with all guests
@@ -216,7 +218,7 @@ export default function RSVP() {
         .eq("id", invite.id);
 
       setSuccessMessage(
-        "We will miss you and can't wait to celebrate with you soon!"
+        "We will miss you and can't wait to celebrate with you soon!",
       );
       setTimeout(() => navigate("/wedding"), 2000);
     } catch (err) {
@@ -244,7 +246,7 @@ export default function RSVP() {
   const handleDietaryChange = (
     guestId: string,
     option: string,
-    checked: boolean
+    checked: boolean,
   ) => {
     setGuests(
       guests.map((g) => {
@@ -271,7 +273,7 @@ export default function RSVP() {
           };
         }
         return g;
-      })
+      }),
     );
   };
 
@@ -380,7 +382,7 @@ export default function RSVP() {
 
   const isDietaryOptionSelected = (
     restrictions: string[] | undefined,
-    option: string
+    option: string,
   ): boolean => {
     if (!restrictions) return false;
     if (option === "None") {
@@ -406,14 +408,17 @@ export default function RSVP() {
       const attendingGuests = getAttendingGuests();
       console.log(`Total guests in invite: ${guests.length}`);
       console.log(`Attending guests: ${attendingGuests.length}`);
-      console.log("Attending guest IDs:", attendingGuests.map((g) => g.id));
+      console.log(
+        "Attending guest IDs:",
+        attendingGuests.map((g) => g.id),
+      );
 
       // STEP 1: Insert/Update rsvp_responses for EACH guest
       console.log("\n=== STEP 1: Saving RSVP responses for all guests ===");
       for (const guest of guests) {
         const isAttending = selectedAttendees.has(guest.id);
         const cleanedDietary = cleanDietaryRestrictions(
-          guest.dietary_restrictions || []
+          guest.dietary_restrictions || [],
         );
 
         const rsvpData = {
@@ -424,18 +429,22 @@ export default function RSVP() {
           accommodation_needed: isAttending
             ? accommodationNeeded || false
             : false,
-          accommodation_payment_level: isAttending && accommodationNeeded
-            ? accommodationPayment || "full"
-            : null,
-          atitlan_attending: isAttending ? guest.atitlan_attending || false : false,
-          atitlan_payment_level: isAttending && guest.atitlan_attending
-            ? guest.atitlan_payment_level || "full"
-            : null,
+          accommodation_payment_level:
+            isAttending && accommodationNeeded
+              ? accommodationPayment || "full"
+              : null,
+          atitlan_attending: isAttending
+            ? guest.atitlan_attending || false
+            : false,
+          atitlan_payment_level:
+            isAttending && guest.atitlan_attending
+              ? guest.atitlan_payment_level || "full"
+              : null,
         };
 
         console.log(
           `Saving RSVP for ${guest.first_name} ${guest.last_name} (ID: ${guest.id}):`,
-          rsvpData
+          rsvpData,
         );
 
         const { data: savedRsvp, error: rsvpError } = await supabase
@@ -447,15 +456,15 @@ export default function RSVP() {
         if (rsvpError) {
           console.error(
             `❌ Error saving RSVP for ${guest.first_name}:`,
-            rsvpError
+            rsvpError,
           );
           throw new Error(
-            `Failed to save RSVP for ${guest.first_name}: ${rsvpError.message}`
+            `Failed to save RSVP for ${guest.first_name}: ${rsvpError.message}`,
           );
         }
 
         console.log(
-          `✓ Successfully saved RSVP for ${guest.first_name} ${guest.last_name}`
+          `✓ Successfully saved RSVP for ${guest.first_name} ${guest.last_name}`,
         );
       }
 
@@ -471,7 +480,7 @@ export default function RSVP() {
 
       console.log(`Invite status: ${rsvpStatus}`);
       console.log(
-        `All attending: ${allAttending}, None attending: ${noneAttending}`
+        `All attending: ${allAttending}, None attending: ${noneAttending}`,
       );
 
       const { error: inviteError } = await supabase
@@ -490,7 +499,11 @@ export default function RSVP() {
       console.log(`✓ Successfully updated invite status to: ${rsvpStatus}`);
 
       // STEP 3: Save accommodation payment if applicable
-      if (attendingGuests.length > 0 && accommodationNeeded && accommodationPayment) {
+      if (
+        attendingGuests.length > 0 &&
+        accommodationNeeded &&
+        accommodationPayment
+      ) {
         console.log("\n=== STEP 3: Saving accommodation payment ===");
 
         const total =
@@ -507,18 +520,16 @@ export default function RSVP() {
         console.log(`Accommodation cost: $${accommodationCost}`);
         console.log(`Payment level: ${accommodationPayment}`);
 
-        const { error: paymentError } = await supabase
-          .from("payments")
-          .insert({
-            invite_id: invite.id,
-            payment_type: "accommodation",
-            amount_committed: accommodationCost,
-          });
+        const { error: paymentError } = await supabase.from("payments").insert({
+          invite_id: invite.id,
+          payment_type: "accommodation",
+          amount_committed: accommodationCost,
+        });
 
         if (paymentError) {
           console.error("❌ Error saving accommodation payment:", paymentError);
           throw new Error(
-            `Failed to save accommodation payment: ${paymentError.message}`
+            `Failed to save accommodation payment: ${paymentError.message}`,
           );
         }
 
@@ -535,17 +546,13 @@ export default function RSVP() {
         for (const guestId of atitlanGuests) {
           const paymentLevel = atitlanPayments[guestId];
           const multiplier =
-            paymentLevel === "none"
-              ? 0
-              : paymentLevel === "half"
-                ? 0.5
-                : 1;
+            paymentLevel === "none" ? 0 : paymentLevel === "half" ? 0.5 : 1;
           const guestCost = atitlanCostPerPerson * multiplier;
           totalAtitlan += guestCost;
 
           const guestName = guests.find((g) => g.id === guestId)?.first_name;
           console.log(
-            `${guestName} - Payment level: ${paymentLevel}, Cost: $${guestCost}`
+            `${guestName} - Payment level: ${paymentLevel}, Cost: $${guestCost}`,
           );
         }
 
@@ -560,9 +567,12 @@ export default function RSVP() {
           });
 
         if (atitlanPaymentError) {
-          console.error("❌ Error saving Atitlan payment:", atitlanPaymentError);
+          console.error(
+            "❌ Error saving Atitlan payment:",
+            atitlanPaymentError,
+          );
           throw new Error(
-            `Failed to save Atitlan payment: ${atitlanPaymentError.message}`
+            `Failed to save Atitlan payment: ${atitlanPaymentError.message}`,
           );
         }
 
@@ -628,29 +638,28 @@ export default function RSVP() {
         </div>
 
         {/* SECTION 2: Guest Selection (for couple/plusone) */}
-        {attendanceDecision === true &&
-          invite?.invite_type === "couple" && (
-            <div className="rsvp-section">
-              <h2 className="rsvp-question">Who will be attending?</h2>
-              <div className="rsvp-checkboxes">
-                {guests.map((guest) => (
-                  <label key={guest.id} className="rsvp-checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={selectedAttendees.has(guest.id)}
-                      onChange={(e) =>
-                        handleAttendeesChange(guest.id, e.target.checked)
-                      }
-                      disabled={submitting}
-                    />
-                    <span>
-                      {guest.first_name} {guest.last_name}
-                    </span>
-                  </label>
-                ))}
-              </div>
+        {attendanceDecision === true && invite?.invite_type === "couple" && (
+          <div className="rsvp-section">
+            <h2 className="rsvp-question">Who will be attending?</h2>
+            <div className="rsvp-checkboxes">
+              {guests.map((guest) => (
+                <label key={guest.id} className="rsvp-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={selectedAttendees.has(guest.id)}
+                    onChange={(e) =>
+                      handleAttendeesChange(guest.id, e.target.checked)
+                    }
+                    disabled={submitting}
+                  />
+                  <span>
+                    {guest.first_name} {guest.last_name}
+                  </span>
+                </label>
+              ))}
             </div>
-          )}
+          </div>
+        )}
 
         {/* SECTION 2: Plus-One (for plusone invite) */}
         {attendanceDecision === true && invite?.invite_type === "plusone" && (
@@ -730,21 +739,18 @@ export default function RSVP() {
                 <div className="rsvp-dietary-grid">
                   <div className="rsvp-dietary-column">
                     {DIETARY_LEFT_COLUMN.map((option) => (
-                      <label
-                        key={option}
-                        className="rsvp-checkbox-label"
-                      >
+                      <label key={option} className="rsvp-checkbox-label">
                         <input
                           type="checkbox"
                           checked={isDietaryOptionSelected(
                             guest.dietary_restrictions,
-                            option
+                            option,
                           )}
                           onChange={(e) =>
                             handleDietaryChange(
                               guest.id,
                               option,
-                              e.target.checked
+                              e.target.checked,
                             )
                           }
                           disabled={submitting}
@@ -755,21 +761,18 @@ export default function RSVP() {
                   </div>
                   <div className="rsvp-dietary-column">
                     {DIETARY_RIGHT_COLUMN.map((option) => (
-                      <label
-                        key={option}
-                        className="rsvp-checkbox-label"
-                      >
+                      <label key={option} className="rsvp-checkbox-label">
                         <input
                           type="checkbox"
                           checked={isDietaryOptionSelected(
                             guest.dietary_restrictions,
-                            option
+                            option,
                           )}
                           onChange={(e) =>
                             handleDietaryChange(
                               guest.id,
                               option,
-                              e.target.checked
+                              e.target.checked,
                             )
                           }
                           disabled={submitting}
@@ -791,8 +794,8 @@ export default function RSVP() {
                           guests.map((g) =>
                             g.id === guest.id
                               ? { ...g, dietary_notes: e.target.value }
-                              : g
-                          )
+                              : g,
+                          ),
                         )
                       }
                       disabled={submitting}
@@ -845,9 +848,7 @@ export default function RSVP() {
                     </p>
                   </div>
 
-                  <h3 className="rsvp-subquestion">
-                    What can you contribute?
-                  </h3>
+                  <h3 className="rsvp-subquestion">What can you contribute?</h3>
                   <div className="rsvp-payment-buttons">
                     {[
                       { level: "none", label: "$0" },
@@ -872,7 +873,7 @@ export default function RSVP() {
                         className={`rsvp-payment-button ${accommodationPayment === level ? "active" : ""}`}
                         onClick={() =>
                           setAccommodationPayment(
-                            level as "none" | "half" | "full"
+                            level as "none" | "half" | "full",
                           )
                         }
                         disabled={submitting}
@@ -920,8 +921,7 @@ export default function RSVP() {
                   {getAttendingGuests().length === 1 ? (
                     <>
                       <h3 className="rsvp-subquestion">
-                        What can{" "}
-                        {getAttendingGuests()[0]?.first_name || "you"}{" "}
+                        What can {getAttendingGuests()[0]?.first_name || "you"}{" "}
                         contribute?
                       </h3>
                       <div className="rsvp-payment-buttons">
@@ -935,8 +935,10 @@ export default function RSVP() {
                             className={`rsvp-payment-button ${atitlanPayments[getAttendingGuests()[0].id] === level ? "active" : ""}`}
                             onClick={() => {
                               setAtitlanPayments({
-                                [getAttendingGuests()[0].id]:
-                                  level as "none" | "half" | "full",
+                                [getAttendingGuests()[0].id]: level as
+                                  | "none"
+                                  | "half"
+                                  | "full",
                               });
                             }}
                             disabled={submitting}
@@ -953,10 +955,7 @@ export default function RSVP() {
                       </h3>
                       <div className="rsvp-checkboxes">
                         {getAttendingGuests().map((guest) => (
-                          <label
-                            key={guest.id}
-                            className="rsvp-checkbox-label"
-                          >
+                          <label key={guest.id} className="rsvp-checkbox-label">
                             <input
                               type="checkbox"
                               checked={atitlanGuests.has(guest.id)}
@@ -985,13 +984,10 @@ export default function RSVP() {
                           </h3>
                           {Array.from(atitlanGuests).map((guestId) => {
                             const guest = getAttendingGuests().find(
-                              (g) => g.id === guestId
+                              (g) => g.id === guestId,
                             );
                             return (
-                              <div
-                                key={guestId}
-                                className="rsvp-guest-payment"
-                              >
+                              <div key={guestId} className="rsvp-guest-payment">
                                 <p className="rsvp-guest-name">
                                   {guest?.first_name} {guest?.last_name}
                                 </p>
@@ -1007,8 +1003,10 @@ export default function RSVP() {
                                       onClick={() =>
                                         setAtitlanPayments({
                                           ...atitlanPayments,
-                                          [guestId]:
-                                            level as "none" | "half" | "full",
+                                          [guestId]: level as
+                                            | "none"
+                                            | "half"
+                                            | "full",
                                         })
                                       }
                                       disabled={submitting}
@@ -1051,9 +1049,7 @@ export default function RSVP() {
                 </div>
 
                 <div className="rsvp-review-section">
-                  <h3 className="rsvp-review-heading">
-                    Dietary Restrictions:
-                  </h3>
+                  <h3 className="rsvp-review-heading">Dietary Restrictions:</h3>
                   <ul className="rsvp-review-list">
                     {getAttendingGuests().map((guest) => (
                       <li key={guest.id}>
@@ -1098,7 +1094,7 @@ export default function RSVP() {
                         .map(
                           (id) =>
                             getAttendingGuests().find((g) => g.id === id)
-                              ?.first_name
+                              ?.first_name,
                         )
                         .join(", ")}
                     </p>

@@ -32,7 +32,7 @@ export default function Login() {
         if (event === "SIGNED_IN") {
           navigate("/");
         }
-      }
+      },
     );
 
     return () => {
@@ -105,7 +105,10 @@ export default function Login() {
               <p>Check your email for a login link</p>
             </div>
           ) : (
-            <form onSubmit={showMagicLink ? handleMagicLink : handleSubmit} className="login-form">
+            <form
+              onSubmit={showMagicLink ? handleMagicLink : handleSubmit}
+              className="login-form"
+            >
               <div className="login-form-group">
                 <label htmlFor="email" className="login-label">
                   Email
@@ -144,11 +147,7 @@ export default function Login() {
 
               {error && <p className="login-error">{error}</p>}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="login-button"
-              >
+              <button type="submit" disabled={loading} className="login-button">
                 {loading
                   ? showMagicLink
                     ? "Sending..."
