@@ -1,119 +1,9 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/utils/supabase";
-
-interface Guest {
-  id: string;
-  invite_id: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  user_id: string | null;
-  is_primary: boolean;
-}
-
-interface Invite {
-  id: string;
-  invite_code: string;
-  accommodation_group: string;
-  invited_to_atitlan: boolean;
-  rsvp_status: string;
-}
-
-interface UserData {
-  currentGuest: Guest;
-  invite: Invite;
-  allGuests: Guest[];
-}
+import { useAuth } from "@/context/AuthContext";
 
 export default function Landing() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userData, setUserData] = useState<UserData | null>(null);
-
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const { data: session, error: sessionError } =
-        await supabase.auth.getSession();
-
-      if (sessionError) {
-        console.error("Session fetch error:", sessionError);
-        setLoading(false);
-        return;
-      }
-
-      if (!session.session) {
-        // Not logged in, show public landing page
-        setLoading(false);
-        return;
-      }
-
-      // User is logged in, fetch their data
-      try {
-        const userId = session.session.user.id;
-
-        // Step 1: Get current guest record
-        const { data: currentGuest, error: guestError } = await supabase
-          .from("guests")
-          .select("*")
-          .eq("user_id", userId)
-          .single();
-
-        if (guestError || !currentGuest) {
-          console.error("Guest fetch error:", guestError);
-          setLoading(false);
-          return;
-        }
-
-        // Step 2: Get the invite
-        const { data: invite, error: inviteError } = await supabase
-          .from("invites")
-          .select("*")
-          .eq("id", (currentGuest as Guest).invite_id)
-          .single();
-
-        if (inviteError || !invite) {
-          console.error("Invite fetch error:", inviteError);
-          setLoading(false);
-          return;
-        }
-
-        // Step 3: Get all guests in the invite
-        const { data: allGuests, error: allGuestsError } = await supabase
-          .from("guests")
-          .select("*")
-          .eq("invite_id", (currentGuest as Guest).invite_id)
-          .order("is_primary", { ascending: false });
-
-        if (allGuestsError || !allGuests) {
-          console.error("All guests fetch error:", allGuestsError);
-          setLoading(false);
-          return;
-        }
-
-        const userData: UserData = {
-          currentGuest: currentGuest as Guest,
-          invite: invite as Invite,
-          allGuests: allGuests as Guest[],
-        };
-
-        setUserData(userData);
-        setIsAuthenticated(true);
-        setLoading(false);
-      } catch (fetchErr) {
-        console.error("Error fetching user data:", fetchErr);
-        setLoading(false);
-      }
-    } catch (err) {
-      console.error("Auth error:", err);
-      setLoading(false);
-    }
-  };
+  const { isAuthenticated, isLoading, userData } = useAuth();
 
   const getGuestNames = () => {
     if (!userData?.allGuests) return "";
@@ -128,7 +18,7 @@ export default function Landing() {
     return userData.invite.rsvp_status === "pending" ? "RSVP" : "Update RSVP";
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="landing-loading">
         <div className="loading-spinner"></div>

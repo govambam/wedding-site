@@ -1,33 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/utils/supabase";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Travel() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const { data: session, error: sessionError } =
-        await supabase.auth.getSession();
-
-      if (sessionError || !session.session) {
-        navigate("/login");
-        return;
-      }
-
-      setLoading(false);
-    } catch (err) {
-      console.error("Auth check error:", err);
+    if (!isLoading && !isAuthenticated) {
       navigate("/login");
     }
-  };
+  }, [isLoading, isAuthenticated, navigate]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="travel-wrapper">
         <div className="travel-loading">
@@ -35,6 +20,10 @@ export default function Travel() {
         </div>
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return null;
   }
 
   return (

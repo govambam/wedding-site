@@ -1,85 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/utils/supabase";
-
-interface Guest {
-  id: string;
-  invite_id: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  user_id: string | null;
-  is_primary: boolean;
-}
-
-interface Invite {
-  id: string;
-  invite_code: string;
-  accommodation_group: string;
-  invited_to_atitlan: boolean;
-  rsvp_status: string;
-}
+import { useAuth } from "@/context/AuthContext";
 
 export default function Atitlan() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [accessDenied, setAccessDenied] = useState(false);
+  const { isAuthenticated, isLoading, userData } = useAuth();
 
   useEffect(() => {
-    checkAccess();
-  }, []);
-
-  const checkAccess = async () => {
-    try {
-      const { data: session, error: sessionError } =
-        await supabase.auth.getSession();
-
-      if (sessionError || !session.session) {
-        navigate("/login");
-        return;
-      }
-
-      // Get current guest
-      const { data: guest, error: guestError } = await supabase
-        .from("guests")
-        .select("*")
-        .eq("user_id", session.session.user.id)
-        .single();
-
-      if (guestError || !guest) {
-        navigate("/login");
-        return;
-      }
-
-      // Get invite to check Atitlan status
-      const { data: inviteData, error: inviteError } = await supabase
-        .from("invites")
-        .select("*")
-        .eq("id", (guest as Guest).invite_id)
-        .single();
-
-      if (inviteError || !inviteData) {
-        navigate("/login");
-        return;
-      }
-
-      const invite = inviteData as Invite;
-
-      // Check if user is invited to Atitlan
-      if (!invite.invited_to_atitlan) {
-        setAccessDenied(true);
-        setTimeout(() => navigate("/wedding", { replace: true }), 100);
-        return;
-      }
-
-      setLoading(false);
-    } catch (err) {
-      console.error("Error checking Atitlan access:", err);
+    if (!isLoading && !isAuthenticated) {
       navigate("/login");
+    } else if (!isLoading && isAuthenticated && userData) {
+      // Check if user is invited to Atitlan
+      if (!userData.invite.invited_to_atitlan) {
+        navigate("/wedding", { replace: true });
+      }
     }
-  };
+  }, [isLoading, isAuthenticated, userData, navigate]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="atitlan-wrapper">
         <div className="atitlan-loading">
@@ -89,7 +27,7 @@ export default function Atitlan() {
     );
   }
 
-  if (accessDenied) {
+  if (!isAuthenticated || !userData || !userData.invite.invited_to_atitlan) {
     return null;
   }
 

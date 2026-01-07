@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/utils/supabase";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -12,33 +14,12 @@ export default function Login() {
   const [showMagicLink, setShowMagicLink] = useState(false);
 
   useEffect(() => {
-    checkSession();
-  }, []);
-
-  const checkSession = async () => {
-    try {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        navigate("/");
-      }
-    } catch (err) {
-      console.error("Session check error:", err);
+    console.log("🔄 Login page auth state:", { authLoading, isAuthenticated });
+    if (!authLoading && isAuthenticated) {
+      console.log("🚀 Navigating to home page...");
+      navigate("/");
     }
-  };
-
-  useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, _session) => {
-        if (event === "SIGNED_IN") {
-          navigate("/");
-        }
-      },
-    );
-
-    return () => {
-      authListener?.subscription.unsubscribe();
-    };
-  }, [navigate]);
+  }, [authLoading, isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,20 +27,30 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      console.log("🔐 Attempting login...");
+      const { error: signInError, data } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (signInError) {
+        console.error("❌ Login error:", signInError);
         setError(signInError.message);
+        setLoading(false);
       } else {
-        navigate("/");
+        console.log("✅ Login successful!");
+
+        // Give the auth state change listener time to process
+        // If it doesn't navigate within 3 seconds, manually navigate
+        setTimeout(() => {
+          console.log("⏰ Auth timeout, manually navigating...");
+          setLoading(false);
+          navigate("/");
+        }, 3000);
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
       console.error(err);
-    } finally {
       setLoading(false);
     }
   };

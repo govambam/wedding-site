@@ -1,24 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/utils/supabase";
-
-interface Guest {
-  id: string;
-  invite_id: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  user_id: string | null;
-  is_primary: boolean;
-}
-
-interface Invite {
-  id: string;
-  invite_code: string;
-  accommodation_group: string;
-  invited_to_atitlan: boolean;
-  rsvp_status: string;
-}
 
 interface RsvpResponse {
   id: string;
@@ -56,17 +39,10 @@ interface Payment {
   notes: string | null;
 }
 
-interface UserData {
-  currentGuest: Guest;
-  invite: Invite;
-  allGuests: Guest[];
-}
-
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading: authLoading, userData } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [accessDenied, setAccessDenied] = useState(false);
-  const [userData, setUserData] = useState<UserData | null>(null);
   const [rsvpResponses, setRsvpResponses] = useState<
     Record<string, RsvpResponse>
   >({});
@@ -83,73 +59,24 @@ export default function Dashboard() {
   const [rsvpFormState, setRsvpFormState] = useState<Record<string, any>>({});
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      const { data: session, error: sessionError } =
-        await supabase.auth.getSession();
-
-      if (sessionError || !session.session) {
-        navigate("/login");
-        return;
-      }
-
-      // Get current guest
-      const { data: currentGuest, error: guestError } = await supabase
-        .from("guests")
-        .select("*")
-        .eq("user_id", session.session.user.id)
-        .single();
-
-      if (guestError || !currentGuest) {
-        navigate("/login");
-        return;
-      }
-
-      // Get invite
-      const { data: inviteData, error: inviteError } = await supabase
-        .from("invites")
-        .select("*")
-        .eq("id", (currentGuest as Guest).invite_id)
-        .single();
-
-      if (inviteError || !inviteData) {
-        navigate("/login");
-        return;
-      }
-
-      const invite = inviteData as Invite;
-
+    if (!authLoading && !isAuthenticated) {
+      navigate("/login");
+    } else if (!authLoading && isAuthenticated && userData) {
       // Check RSVP status
-      if (invite.rsvp_status === "pending") {
+      if (userData.invite.rsvp_status === "pending") {
         navigate("/rsvp");
         return;
-      } else if (invite.rsvp_status === "declined") {
+      } else if (userData.invite.rsvp_status === "declined") {
         navigate("/wedding");
         return;
       }
+      loadData();
+    }
+  }, [authLoading, isAuthenticated, userData, navigate]);
 
-      // Get all guests in invite
-      const { data: allGuests, error: allGuestsError } = await supabase
-        .from("guests")
-        .select("*")
-        .eq("invite_id", (currentGuest as Guest).invite_id)
-        .order("is_primary", { ascending: false });
-
-      if (allGuestsError || !allGuests) {
-        navigate("/login");
-        return;
-      }
-
-      const userData: UserData = {
-        currentGuest: currentGuest as Guest,
-        invite: invite,
-        allGuests: allGuests as Guest[],
-      };
-
-      setUserData(userData);
+  const loadData = async () => {
+    try {
+      if (!userData) return;
 
       // Fetch RSVP responses
       const { data: rsvpData } = await supabase
@@ -157,7 +84,7 @@ export default function Dashboard() {
         .select("*")
         .in(
           "guest_id",
-          allGuests.map((g) => g.id),
+          userData.allGuests.map((g) => g.id),
         );
 
       if (rsvpData) {
@@ -175,7 +102,7 @@ export default function Dashboard() {
         .select("*")
         .in(
           "guest_id",
-          allGuests.map((g) => g.id),
+          userData.allGuests.map((g) => g.id),
         );
 
       if (travelData) {
@@ -188,7 +115,7 @@ export default function Dashboard() {
       } else {
         // Initialize empty travel details for form
         const emptyTravel: Record<string, TravelDetails> = {};
-        allGuests.forEach((g) => {
+        userData.allGuests.forEach((g) => {
           emptyTravel[g.id] = {
             guest_id: g.id,
             arrival_date: null,
@@ -210,7 +137,7 @@ export default function Dashboard() {
       const { data: paymentData } = await supabase
         .from("payments")
         .select("*")
-        .eq("invite_id", invite.id);
+        .eq("invite_id", userData.invite.id);
 
       if (paymentData) {
         setPayments(paymentData as Payment[]);
@@ -389,7 +316,7 @@ export default function Dashboard() {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="dashboard-wrapper">
         <div className="dashboard-loading">
@@ -399,7 +326,7 @@ export default function Dashboard() {
     );
   }
 
-  if (accessDenied || !userData) {
+  if (!isAuthenticated || !userData) {
     return null;
   }
 

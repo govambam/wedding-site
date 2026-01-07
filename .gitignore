@@ -24,4 +24,9 @@ dist-ssr
 *.sw?
 
 .config/
-!.env
+
+# Environment variables (never commit these!)
+.env
+.env.local
+.env.production
+.env.development

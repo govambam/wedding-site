@@ -1,59 +1,12 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/utils/supabase";
-
-interface Guest {
-  id: string;
-  first_name: string;
-  last_name: string;
-  user_id: string;
-  email: string;
-  invite_id: string;
-  is_primary: boolean;
-}
-
-interface Invite {
-  id: string;
-  invited_to_atitlan: boolean;
-  rsvp_status: string;
-}
-
-interface UserData {
-  currentGuest: Guest;
-  invite: Invite;
-  allGuests: Guest[];
-}
+import { useAuth } from "@/context/AuthContext";
 
 export default function Navigation() {
   const navigate = useNavigate();
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState<UserData | null>(null);
+  const { isAuthenticated, isLoading, userData, signOut } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    checkAuth();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event) => {
-        console.log("Auth state changed:", event);
-        if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
-          if (event === "SIGNED_IN") {
-            await fetchUserData();
-          } else {
-            console.log("User signed out");
-            setIsLoggedIn(false);
-            setUserData(null);
-          }
-        }
-      },
-    );
-
-    return () => {
-      authListener?.subscription.unsubscribe();
-    };
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -70,159 +23,6 @@ export default function Navigation() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
-  const checkAuth = async () => {
-    try {
-      console.log("Checking authentication...");
-      const { data, error: sessionError } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        console.error("Session check error:", sessionError);
-        setIsLoggedIn(false);
-        setLoading(false);
-        return;
-      }
-
-      if (data.session) {
-        console.log("Session found for user:", data.session.user.id);
-        setIsLoggedIn(true);
-        await fetchUserData();
-      } else {
-        console.log("No session found");
-        setIsLoggedIn(false);
-        setLoading(false);
-      }
-    } catch (err) {
-      console.error("Auth check error:", err);
-      setIsLoggedIn(false);
-      setLoading(false);
-    }
-  };
-
-  const fetchUserData = async () => {
-    try {
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession();
-
-      if (sessionError || !sessionData.session) {
-        console.error("Session error:", sessionError);
-        setUserData(null);
-        setLoading(false);
-        return;
-      }
-
-      const userId = sessionData.session.user.id;
-      console.log("Fetching user data for:", userId);
-
-      // Step 1: Get current user's guest record
-      console.log("Step 1: Fetching guest record...");
-      const { data: guest, error: guestError } = await supabase
-        .from("guests")
-        .select("*")
-        .eq("user_id", userId)
-        .single();
-
-      console.log("Guest data:", guest, "Error:", guestError);
-
-      if (guestError) {
-        console.error("Guest fetch error:", guestError);
-        if (guestError.message.includes("infinite recursion")) {
-          console.warn(
-            "RLS policy infinite recursion detected. This is a Supabase configuration issue.",
-          );
-        }
-        setUserData(null);
-        setLoading(false);
-        return;
-      }
-
-      if (!guest) {
-        console.error("No guest found for user");
-        setUserData(null);
-        setLoading(false);
-        return;
-      }
-
-      // Step 2: Get invite
-      console.log("Step 2: Fetching invite for invite_id:", guest.invite_id);
-      const { data: invite, error: inviteError } = await supabase
-        .from("invites")
-        .select("*")
-        .eq("id", guest.invite_id)
-        .single();
-
-      console.log("Invite data:", invite, "Error:", inviteError);
-
-      if (inviteError) {
-        console.error("Invite fetch error:", inviteError);
-        if (inviteError.message.includes("infinite recursion")) {
-          console.warn(
-            "RLS policy infinite recursion on invites table. Check Supabase policies for circular dependencies with admin_users.",
-          );
-        }
-        setUserData(null);
-        setLoading(false);
-        return;
-      }
-
-      if (!invite) {
-        console.error("No invite found");
-        setUserData(null);
-        setLoading(false);
-        return;
-      }
-
-      // Step 3: Get all guests in invite
-      console.log(
-        "Step 3: Fetching all guests for invite_id:",
-        guest.invite_id,
-      );
-      const { data: allGuests, error: allGuestsError } = await supabase
-        .from("guests")
-        .select("*")
-        .eq("invite_id", guest.invite_id)
-        .order("is_primary", { ascending: false });
-
-      console.log("All guests:", allGuests, "Error:", allGuestsError);
-
-      if (allGuestsError) {
-        console.error("All guests fetch error:", allGuestsError);
-        setUserData(null);
-        setLoading(false);
-        return;
-      }
-
-      if (!allGuests || allGuests.length === 0) {
-        console.error("No guests found for invite");
-        setUserData(null);
-        setLoading(false);
-        return;
-      }
-
-      // Success - store all data
-      const userData: UserData = {
-        currentGuest: guest as Guest,
-        invite: invite as Invite,
-        allGuests: allGuests as Guest[],
-      };
-
-      console.log("User data loaded successfully:", userData);
-      setUserData(userData);
-    } catch (error: any) {
-      console.error("Unexpected error fetching user data:", error);
-      if (error.message?.includes("infinite recursion")) {
-        console.warn(
-          "⚠️ RLS Policy Issue: Fix the infinite recursion in your Supabase RLS policies",
-        );
-        console.warn(
-          "Check that the 'invites' table policy does not reference 'admin_users'",
-        );
-      }
-      setUserData(null);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getGuestDisplayName = () => {
     if (!userData?.allGuests || userData.allGuests.length === 0) {
@@ -250,22 +50,7 @@ export default function Navigation() {
   };
 
   const handleLogout = async () => {
-    console.log("Logging out...");
-    try {
-      // Try to sign out, but don't wait too long
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Signout timeout")), 3000),
-      );
-
-      await Promise.race([supabase.auth.signOut(), timeoutPromise]);
-    } catch (error) {
-      console.error("Error during signout:", error);
-      // Continue logout even if signOut fails
-    }
-
-    // Always clear local state and redirect
-    setIsLoggedIn(false);
-    setUserData(null);
+    await signOut();
     navigate("/", { replace: true });
   };
 
@@ -280,8 +65,8 @@ export default function Navigation() {
   };
 
   console.log("Navigation render:", {
-    isLoggedIn,
-    loading,
+    isAuthenticated,
+    isLoading,
     hasUserData: !!userData,
     rsvpStatus: userData?.invite?.rsvp_status,
   });
@@ -295,7 +80,7 @@ export default function Navigation() {
           </button>
         </div>
 
-        {!loading && isLoggedIn && userData && (
+        {!isLoading && isAuthenticated && userData && (
           <>
             <div className="nav-links">
               <a
@@ -363,14 +148,28 @@ export default function Navigation() {
 
               {showDropdown && (
                 <div className="nav-dropdown">
-                  {userData.invite?.rsvp_status === "pending" ? (
+                  {/* Pending: Show RSVP */}
+                  {userData.invite?.rsvp_status === "pending" && (
                     <button
                       onClick={handleRsvpClick}
                       className="nav-dropdown-item"
                     >
                       RSVP
                     </button>
-                  ) : (
+                  )}
+
+                  {/* Confirmed: Show Dashboard only */}
+                  {userData.invite?.rsvp_status === "confirmed" && (
+                    <button
+                      onClick={handleDashboardClick}
+                      className="nav-dropdown-item"
+                    >
+                      Dashboard
+                    </button>
+                  )}
+
+                  {/* Declined: Show Update RSVP only */}
+                  {userData.invite?.rsvp_status === "declined" && (
                     <button
                       onClick={handleRsvpClick}
                       className="nav-dropdown-item"
@@ -379,16 +178,14 @@ export default function Navigation() {
                     </button>
                   )}
 
-                  {userData.invite?.rsvp_status === "confirmed" && (
-                    <>
-                      <div className="nav-dropdown-separator"></div>
-                      <button
-                        onClick={handleDashboardClick}
-                        className="nav-dropdown-item"
-                      >
-                        Dashboard
-                      </button>
-                    </>
+                  {/* Partial: Show Update RSVP only */}
+                  {userData.invite?.rsvp_status === "partial" && (
+                    <button
+                      onClick={handleRsvpClick}
+                      className="nav-dropdown-item"
+                    >
+                      Update RSVP
+                    </button>
                   )}
 
                   <div className="nav-dropdown-separator"></div>
@@ -404,7 +201,7 @@ export default function Navigation() {
           </>
         )}
 
-        {!loading && isLoggedIn && !userData && (
+        {!isLoading && isAuthenticated && !userData && (
           <div className="nav-user-menu" ref={dropdownRef}>
             <button
               onClick={() => setShowDropdown(!showDropdown)}
@@ -427,7 +224,7 @@ export default function Navigation() {
           </div>
         )}
 
-        {!loading && !isLoggedIn && (
+        {!isLoading && !isAuthenticated && (
           <div className="nav-login">
             <button
               onClick={() => navigate("/login")}

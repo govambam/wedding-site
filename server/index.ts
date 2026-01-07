@@ -2,6 +2,8 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { handleDemo } from "./routes/demo";
+import { createInvitation } from "./routes/invitations";
+import { requireAuth, requireAdmin } from "./middleware/adminAuth";
 
 export function createServer() {
   const app = express();
@@ -18,6 +20,14 @@ export function createServer() {
   });
 
   app.get("/api/demo", handleDemo);
+
+  // Admin routes - protected by authentication and admin check
+  app.post(
+    "/api/admin/invitations/create",
+    requireAuth,
+    requireAdmin,
+    createInvitation
+  );
 
   return app;
 }

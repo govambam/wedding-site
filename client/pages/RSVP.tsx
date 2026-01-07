@@ -1,15 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth, Guest as AuthGuest } from "@/context/AuthContext";
 import { supabase } from "@/utils/supabase";
 
-interface Guest {
-  id: string;
-  invite_id: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  user_id: string | null;
-  is_primary: boolean;
+interface Guest extends AuthGuest {
   attending?: boolean;
   dietary_restrictions?: string[];
   dietary_notes?: string;
@@ -17,14 +11,6 @@ interface Guest {
   accommodation_payment_level?: "none" | "half" | "full";
   atitlan_attending?: boolean;
   atitlan_payment_level?: "none" | "half" | "full";
-}
-
-interface Invite {
-  id: string;
-  invite_type: "single" | "couple" | "plusone";
-  accommodation_group: string;
-  invited_to_atitlan: boolean;
-  rsvp_status: string;
 }
 
 interface AccommodationGroup {
@@ -57,14 +43,13 @@ const DIETARY_RIGHT_COLUMN = ["Vegan", "Dairy-Free", "Nut Allergy", "None"];
 
 export default function RSVP() {
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading: authLoading, userData } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
-  // Auth & data
-  const [currentGuest, setCurrentGuest] = useState<Guest | null>(null);
-  const [invite, setInvite] = useState<Invite | null>(null);
+  // Data
   const [accommodationGroup, setAccommodationGroup] =
     useState<AccommodationGroup | null>(null);
 
@@ -81,6 +66,7 @@ export default function RSVP() {
     lastName: "",
   });
   const [showPlusOneForm, setShowPlusOneForm] = useState(false);
+  const [plusOneAdded, setPlusOneAdded] = useState(false);
   const [accommodationNeeded, setAccommodationNeeded] = useState<
     boolean | null
   >(null);
@@ -97,62 +83,23 @@ export default function RSVP() {
   const [formComplete, setFormComplete] = useState(false);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!authLoading && !isAuthenticated) {
+      navigate("/login");
+    } else if (!authLoading && isAuthenticated && userData) {
+      loadData();
+    }
+  }, [authLoading, isAuthenticated, userData, navigate]);
 
   const loadData = async () => {
     try {
-      const { data: session, error: sessionError } =
-        await supabase.auth.getSession();
-      if (sessionError || !session.session) {
-        navigate("/login");
-        return;
-      }
-
-      // Get current guest and invite
-      const { data: guest, error: guestError } = await supabase
-        .from("guests")
-        .select("*")
-        .eq("user_id", session.session.user.id)
-        .single();
-
-      if (guestError || !guest) {
-        setError("Unable to load guest information");
-        setLoading(false);
-        return;
-      }
-
-      const { data: inviteData, error: inviteError } = await supabase
-        .from("invites")
-        .select("*")
-        .eq("id", guest.invite_id)
-        .single();
-
-      if (inviteError || !inviteData) {
-        setError("Unable to load invite information");
-        setLoading(false);
-        return;
-      }
-
-      // Get all guests in invite
-      const { data: allGuests, error: allGuestsError } = await supabase
-        .from("guests")
-        .select("*")
-        .eq("invite_id", guest.invite_id)
-        .order("is_primary", { ascending: false });
-
-      if (allGuestsError || !allGuests) {
-        setError("Unable to load guest list");
-        setLoading(false);
-        return;
-      }
+      if (!userData) return;
 
       // Get accommodation group if applicable
-      if (inviteData.accommodation_group) {
+      if (userData.invite.accommodation_group) {
         const { data: accomGroup } = await supabase
           .from("accommodation_groups")
           .select("*")
-          .eq("group_code", inviteData.accommodation_group)
+          .eq("group_code", userData.invite.accommodation_group)
           .single();
 
         if (accomGroup) {
@@ -160,22 +107,20 @@ export default function RSVP() {
         }
       }
 
-      setCurrentGuest(guest as Guest);
-      setInvite(inviteData as Invite);
       setGuests(
-        allGuests.map((g) => ({
+        userData.allGuests.map((g) => ({
           ...g,
           attending: true,
           dietary_restrictions: [],
           accommodation_needed: true,
-          accommodation_payment_level: "full",
+          accommodation_payment_level: "full" as "none" | "half" | "full",
           atitlan_attending: false,
-          atitlan_payment_level: "full",
+          atitlan_payment_level: "full" as "none" | "half" | "full",
         })),
       );
 
       // Initialize selected attendees with all guests
-      setSelectedAttendees(new Set(allGuests.map((g) => g.id)));
+      setSelectedAttendees(new Set(userData.allGuests.map((g) => g.id)));
 
       setLoading(false);
     } catch (err) {
@@ -195,7 +140,7 @@ export default function RSVP() {
   const submitDecline = async () => {
     setSubmitting(true);
     try {
-      if (!invite) return;
+      if (!userData) return;
 
       // Mark all guests as not attending
       for (const guest of guests) {
@@ -215,7 +160,7 @@ export default function RSVP() {
           rsvp_status: "declined",
           rsvp_submitted_at: new Date().toISOString(),
         })
-        .eq("id", invite.id);
+        .eq("id", userData.invite.id);
 
       setSuccessMessage(
         "We will miss you and can't wait to celebrate with you soon!",
@@ -240,7 +185,21 @@ export default function RSVP() {
   };
 
   const getAttendingGuests = () => {
-    return guests.filter((g) => selectedAttendees.has(g.id));
+    const attendingGuests = guests.filter((g) => selectedAttendees.has(g.id));
+
+    // If plus one has been added locally, include them in the list for display
+    if (plusOneAdded && plusOneNames.firstName && plusOneNames.lastName) {
+      attendingGuests.push({
+        id: "temp-plusone", // Temporary ID for display purposes
+        first_name: plusOneNames.firstName,
+        last_name: plusOneNames.lastName,
+        is_primary: false,
+        attending: true,
+        dietary_restrictions: [],
+      } as Guest);
+    }
+
+    return attendingGuests;
   };
 
   const handleDietaryChange = (
@@ -287,13 +246,14 @@ export default function RSVP() {
   };
 
   const isGuestSelectionComplete = () => {
-    if (invite?.invite_type === "single") {
+    if (userData?.invite.invite_type === "single") {
       return true;
-    } else if (invite?.invite_type === "couple") {
+    } else if (userData?.invite.invite_type === "couple") {
       return selectedAttendees.size > 0;
-    } else if (invite?.invite_type === "plusone") {
+    } else if (userData?.invite.invite_type === "plusone") {
       if (showPlusOneForm) {
-        return plusOneNames.firstName && plusOneNames.lastName;
+        // Plus one must be added (stored locally) before proceeding
+        return plusOneAdded;
       }
       return true;
     }
@@ -307,7 +267,7 @@ export default function RSVP() {
   };
 
   const isAtitlanComplete = () => {
-    if (!invite?.invited_to_atitlan) return true;
+    if (!userData?.invite.invited_to_atitlan) return true;
     if (atitlanAttending === null) return false;
     if (!atitlanAttending) return true;
 
@@ -339,6 +299,7 @@ export default function RSVP() {
     selectedAttendees,
     showPlusOneForm,
     plusOneNames,
+    plusOneAdded,
     guests,
     accommodationNeeded,
     accommodationPayment,
@@ -347,37 +308,15 @@ export default function RSVP() {
     atitlanPayments,
   ]);
 
-  const handleAddPlusOne = async () => {
+  const handleAddPlusOne = () => {
     if (!plusOneNames.firstName || !plusOneNames.lastName) {
       setError("Please enter first and last name for your guest");
       return;
     }
 
-    try {
-      if (!invite) return;
-      const { data: newGuest } = await supabase
-        .from("guests")
-        .insert({
-          invite_id: invite.id,
-          first_name: plusOneNames.firstName,
-          last_name: plusOneNames.lastName,
-          is_primary: false,
-          email: null,
-          user_id: null,
-        })
-        .select()
-        .single();
-
-      if (newGuest) {
-        const updatedGuests = [...guests, newGuest as Guest];
-        setGuests(updatedGuests);
-        setSelectedAttendees(new Set([...selectedAttendees, newGuest.id]));
-        setError("");
-      }
-    } catch (err) {
-      console.error("Error creating guest:", err);
-      setError("Failed to add guest");
-    }
+    // Store plus one guest data locally (will be saved to DB on RSVP submission)
+    setPlusOneAdded(true);
+    setError("");
   };
 
   const isDietaryOptionSelected = (
@@ -400,13 +339,51 @@ export default function RSVP() {
   };
 
   const handleSubmitRSVP = async () => {
-    if (!invite) return;
+    if (!userData) return;
 
     setSubmitting(true);
     try {
       console.log("=== Starting RSVP submission ===");
-      const attendingGuests = getAttendingGuests();
-      console.log(`Total guests in invite: ${guests.length}`);
+
+      // STEP 0: Create plus one guest in database if added
+      let plusOneGuestId: string | null = null;
+      if (plusOneAdded && plusOneNames.firstName && plusOneNames.lastName) {
+        console.log("\n=== STEP 0: Creating plus one guest ===");
+        const { data: newGuest, error: newGuestError } = await supabase
+          .from("guests")
+          .insert({
+            invite_id: userData.invite.id,
+            first_name: plusOneNames.firstName,
+            last_name: plusOneNames.lastName,
+            is_primary: false,
+            email: null,
+            user_id: null,
+          })
+          .select()
+          .single();
+
+        if (newGuestError) {
+          console.error("❌ Error creating plus one guest:", newGuestError);
+          throw new Error(`Failed to create plus one guest: ${newGuestError.message}`);
+        }
+
+        plusOneGuestId = newGuest.id;
+        console.log(`✓ Successfully created plus one guest with ID: ${plusOneGuestId}`);
+
+        // Add to guests array for processing
+        setGuests([...guests, newGuest as Guest]);
+      }
+
+      // Get all guests including the newly created plus one
+      const allGuests = plusOneGuestId
+        ? [...guests, { id: plusOneGuestId, first_name: plusOneNames.firstName, last_name: plusOneNames.lastName, is_primary: false } as Guest]
+        : guests;
+
+      const attendingGuests = allGuests.filter(
+        (g) => selectedAttendees.has(g.id) || g.id === plusOneGuestId
+      );
+
+      console.log(`Total guests in invite: ${allGuests.length}`);
       console.log(`Attending guests: ${attendingGuests.length}`);
       console.log(
         "Attending guest IDs:",
@@ -415,8 +392,8 @@ export default function RSVP() {
 
       // STEP 1: Insert/Update rsvp_responses for EACH guest
       console.log("\n=== STEP 1: Saving RSVP responses for all guests ===");
-      for (const guest of guests) {
-        const isAttending = selectedAttendees.has(guest.id);
+      for (const guest of allGuests) {
+        const isAttending = selectedAttendees.has(guest.id) || guest.id === plusOneGuestId;
         const cleanedDietary = cleanDietaryRestrictions(
           guest.dietary_restrictions || [],
         );
@@ -470,7 +447,7 @@ export default function RSVP() {
 
       // STEP 2: Calculate and update invite rsvp_status
       console.log("\n=== STEP 2: Updating invite status ===");
-      const allAttending = attendingGuests.length === guests.length;
+      const allAttending = attendingGuests.length === allGuests.length;
       const noneAttending = attendingGuests.length === 0;
       const rsvpStatus = noneAttending
         ? "declined"
@@ -489,7 +466,7 @@ export default function RSVP() {
           rsvp_status: rsvpStatus,
           rsvp_submitted_at: new Date().toISOString(),
         })
-        .eq("id", invite.id);
+        .eq("id", userData.invite.id);
 
       if (inviteError) {
         console.error("❌ Error updating invite:", inviteError);
@@ -521,7 +498,7 @@ export default function RSVP() {
         console.log(`Payment level: ${accommodationPayment}`);
 
         const { error: paymentError } = await supabase.from("payments").insert({
-          invite_id: invite.id,
+          invite_id: userData.invite.id,
           payment_type: "accommodation",
           amount_committed: accommodationCost,
         });
@@ -561,7 +538,7 @@ export default function RSVP() {
         const { error: atitlanPaymentError } = await supabase
           .from("payments")
           .insert({
-            invite_id: invite.id,
+            invite_id: userData.invite.id,
             payment_type: "atitlan",
             amount_committed: totalAtitlan,
           });
@@ -638,7 +615,7 @@ export default function RSVP() {
         </div>
 
         {/* SECTION 2: Guest Selection (for couple/plusone) */}
-        {attendanceDecision === true && invite?.invite_type === "couple" && (
+        {attendanceDecision === true && userData?.invite.invite_type === "couple" && (
           <div className="rsvp-section">
             <h2 className="rsvp-question">Who will be attending?</h2>
             <div className="rsvp-checkboxes">
@@ -662,13 +639,17 @@ export default function RSVP() {
         )}
 
         {/* SECTION 2: Plus-One (for plusone invite) */}
-        {attendanceDecision === true && invite?.invite_type === "plusone" && (
+        {attendanceDecision === true && userData?.invite.invite_type === "plusone" && (
           <div className="rsvp-section">
             <h2 className="rsvp-question">Will you be bringing a guest?</h2>
             <div className="rsvp-button-group">
               <button
                 className={`rsvp-option-button ${!showPlusOneForm ? "active" : ""}`}
-                onClick={() => setShowPlusOneForm(false)}
+                onClick={() => {
+                  setShowPlusOneForm(false);
+                  setPlusOneAdded(false);
+                  setPlusOneNames({ firstName: "", lastName: "" });
+                }}
                 disabled={submitting}
               >
                 No
@@ -714,14 +695,19 @@ export default function RSVP() {
                     disabled={submitting}
                   />
                 </div>
-                {isGuestSelectionComplete() && (
+                {plusOneNames.firstName && plusOneNames.lastName && !plusOneAdded && (
                   <button
                     className="rsvp-add-guest-button"
                     onClick={handleAddPlusOne}
                     disabled={submitting}
                   >
-                    Add Guest
+                    Continue
                   </button>
+                )}
+                {plusOneAdded && (
+                  <div className="rsvp-guest-added-message">
+                    ✓ Guest added: {plusOneNames.firstName} {plusOneNames.lastName}
+                  </div>
                 )}
               </div>
             )}
@@ -892,7 +878,7 @@ export default function RSVP() {
           isGuestSelectionComplete() &&
           isDietaryComplete() &&
           isAccommodationComplete() &&
-          invite?.invited_to_atitlan && (
+          userData?.invite.invited_to_atitlan && (
             <div className="rsvp-section">
               <h2 className="rsvp-question">
                 Will you be attending the post-ceremony celebration at Lake
@@ -1364,6 +1350,18 @@ export default function RSVP() {
         .rsvp-add-guest-button:disabled {
           opacity: 0.5;
           cursor: not-allowed;
+        }
+
+        .rsvp-guest-added-message {
+          padding: 1rem;
+          background-color: #e8f5e9;
+          color: #2e7d32;
+          border: 1px solid #2e7d32;
+          border-radius: 2px;
+          font-family: "orpheuspro", serif;
+          font-size: 1rem;
+          text-align: center;
+          margin-top: 1rem;
         }
 
         .rsvp-guest-section {

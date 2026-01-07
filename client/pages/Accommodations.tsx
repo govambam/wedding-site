@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/utils/supabase";
 
 interface AccommodationGroup {
@@ -13,79 +14,32 @@ interface AccommodationGroup {
   description: string;
 }
 
-interface Guest {
-  id: string;
-  invite_id: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  user_id: string | null;
-  is_primary: boolean;
-}
-
-interface Invite {
-  id: string;
-  invite_code: string;
-  accommodation_group: string;
-  invited_to_atitlan: boolean;
-  rsvp_status: string;
-}
-
 export default function Accommodations() {
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading: authLoading, userData } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [accommodationGroup, setAccommodationGroup] =
     useState<AccommodationGroup | null>(null);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!authLoading && !isAuthenticated) {
+      navigate("/login");
+    } else if (!authLoading && isAuthenticated && userData) {
+      loadData();
+    }
+  }, [authLoading, isAuthenticated, userData, navigate]);
 
   const loadData = async () => {
     try {
-      const { data: session, error: sessionError } =
-        await supabase.auth.getSession();
+      if (!userData) return;
 
-      if (sessionError || !session.session) {
-        navigate("/login");
-        return;
-      }
-
-      // Get current guest
-      const { data: guest, error: guestError } = await supabase
-        .from("guests")
-        .select("*")
-        .eq("user_id", session.session.user.id)
-        .single();
-
-      if (guestError || !guest) {
-        setError("Unable to load guest information");
-        setLoading(false);
-        return;
-      }
-
-      // Get invite
-      const { data: inviteData, error: inviteError } = await supabase
-        .from("invites")
-        .select("*")
-        .eq("id", (guest as Guest).invite_id)
-        .single();
-
-      if (inviteError || !inviteData) {
-        setError("Unable to load invite information");
-        setLoading(false);
-        return;
-      }
-
-      const invite = inviteData as Invite;
-
-      // Get accommodation group
-      if (invite.accommodation_group) {
+      // Get accommodation group from userData.invite
+      if (userData.invite.accommodation_group) {
         const { data: accomGroup, error: accomError } = await supabase
           .from("accommodation_groups")
           .select("*")
-          .eq("group_code", invite.accommodation_group)
+          .eq("group_code", userData.invite.accommodation_group)
           .single();
 
         if (accomError) {
@@ -112,7 +66,7 @@ export default function Accommodations() {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="accommodations-wrapper">
         <div className="accommodations-loading">
@@ -120,6 +74,10 @@ export default function Accommodations() {
         </div>
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return null;
   }
 
   if (error) {
